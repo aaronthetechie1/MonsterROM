@@ -8,6 +8,7 @@ import re
 import subprocess
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,6 +25,124 @@ def run_bash(script, work_dir, **variables):
 
 
 class SourceTests(unittest.TestCase):
+    def run_smali(self, content, commands):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            decoded = root / "apktool/system/framework/test.jar/smali/Example.smali"
+            decoded.parent.mkdir(parents=True)
+            decoded.write_text(content)
+            result = run_bash('''
+source "$SRC_DIR/scripts/utils/smali_utils.sh"
+DECODE_APK() { :; }
+''' + commands, root, APKTOOL_DIR=root / "apktool")
+            return result, decoded.read_text()
+
+    @staticmethod
+    def smali_fixture(value="a.b", prefix_value="a.b"):
+        return f'''\
+.class public LExample;
+.super Ljava/lang/Object;
+
+.method public static prefixvalue()Ljava/lang/String;
+    .locals 1
+    const-string v0, "{prefix_value}"
+    return-object v0
+.end method
+
+.method public static value()Ljava/lang/String;
+    .locals 1
+    const-string v0, "{value}"
+    return-object v0
+.end method
+'''
+
+    def test_smali_replace_is_literal_scoped_and_repeatable(self):
+        command = ("SMALI_PATCH system system/framework/test.jar smali/Example.smali "
+                   "replace 'value()Ljava/lang/String;' 'a.b' 'a[b]&c'\n")
+        result, content = self.run_smali(self.smali_fixture(), command + command)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(content.count('const-string v0, "a.b"'), 1)
+        self.assertEqual(content.count('const-string v0, "a[b]&c"'), 1)
+
+    def test_smali_replace_rejects_regex_near_matches(self):
+        original = self.smali_fixture(value="axb")
+        result, content = self.run_smali(original,
+            "SMALI_PATCH system system/framework/test.jar smali/Example.smali "
+            "replace 'value()Ljava/lang/String;' 'a.b' 'replacement'\n")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(content, original)
+
+    def test_smali_replace_does_not_accept_another_methods_replacement(self):
+        original = self.smali_fixture(value="unexpected", prefix_value="replacement")
+        result, content = self.run_smali(original,
+            "SMALI_PATCH system system/framework/test.jar smali/Example.smali "
+            "replace 'value()Ljava/lang/String;' 'old' 'replacement'\n")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(content, original)
+
+    def test_smali_requires_an_exact_method_declaration(self):
+        original = self.smali_fixture().replace(' static value()', ' static othervalue()')
+        original += '# Call site: LExample;->value()Ljava/lang/String;\n'
+        result, content = self.run_smali(original,
+            "SMALI_PATCH system system/framework/test.jar smali/Example.smali "
+            "replace 'value()Ljava/lang/String;' 'a.b' 'replacement'\n")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('exactly one declaration', result.stderr)
+        self.assertEqual(content, original)
+
+    def test_smali_replaceall_remains_global(self):
+        result, content = self.run_smali(self.smali_fixture(),
+            "SMALI_PATCH system system/framework/test.jar smali/Example.smali "
+            "replaceall 'a.b' 'replacement'\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(content.count('const-string v0, "replacement"'), 2)
+
+    def test_smali_static_return_uses_a_local_register(self):
+        original = ('.class public LExample;\n.super Ljava/lang/Object;\n'
+                    '.method public static enabled()Z\n    .locals 1\n'
+                    '    const/4 v0, 0x1\n    return v0\n.end method\n')
+        result, content = self.run_smali(original,
+            "SMALI_PATCH system system/framework/test.jar smali/Example.smali "
+            "return 'enabled()Z' false\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('.locals 1', content)
+        self.assertIn('const/4 v0, 0x0', content)
+        self.assertIn('return v0', content)
+
+    def test_floating_features_are_unique_and_preserve_other_tags(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            xml = root / "system/system/etc/floating_feature.xml"
+            xml.parent.mkdir(parents=True)
+            xml.write_text('''\
+<?xml version="1.0" encoding="utf-8"?>
+<SecFloatingFeatureSet>
+    <CAMERA_SUPPORT_AI_HIGH_RESOLUTION>FALSE</CAMERA_SUPPORT_AI_HIGH_RESOLUTION>
+    <CAMERA_SUPPORT_AI_HIGH_RESOLUTION>FALSE</CAMERA_SUPPORT_AI_HIGH_RESOLUTION>
+    <CAMERA_SUPPORT_AI_HIGH_RESOLUTION_DRAFT_DOWNSCALE>KEEP</CAMERA_SUPPORT_AI_HIGH_RESOLUTION_DRAFT_DOWNSCALE>
+    <UNCHANGED>KEEP</UNCHANGED>
+</SecFloatingFeatureSet>
+''')
+            result = run_bash('''
+source "$SRC_DIR/scripts/utils/module_utils.sh"
+SET_FLOATING_FEATURE_CONFIG CAMERA_SUPPORT_AI_HIGH_RESOLUTION TRUE
+SET_FLOATING_FEATURE_CONFIG CAMERA_SUPPORT_AI_HIGH_RESOLUTION TRUE
+''', root)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            document = ET.parse(xml).getroot()
+            self.assertEqual(len(document.findall('CAMERA_SUPPORT_AI_HIGH_RESOLUTION')), 1)
+            self.assertEqual(document.findtext('CAMERA_SUPPORT_AI_HIGH_RESOLUTION'), 'TRUE')
+            self.assertEqual(document.findtext('CAMERA_SUPPORT_AI_HIGH_RESOLUTION_DRAFT_DOWNSCALE'), 'KEEP')
+            self.assertEqual(document.findtext('UNCHANGED'), 'KEEP')
+            result = run_bash('''
+source "$SRC_DIR/scripts/utils/module_utils.sh"
+SET_FLOATING_FEATURE_CONFIG CAMERA_SUPPORT_AI_HIGH_RESOLUTION --delete
+''', root)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            document = ET.parse(xml).getroot()
+            self.assertIsNone(document.find('CAMERA_SUPPORT_AI_HIGH_RESOLUTION'))
+            self.assertEqual(document.findtext('CAMERA_SUPPORT_AI_HIGH_RESOLUTION_DRAFT_DOWNSCALE'), 'KEEP')
+
     def test_shell_syntax(self):
         files = sorted(path for folder in ("scripts", "platform", "target", "unica")
                        for path in (ROOT / folder).rglob("*.sh") if path.is_file())
