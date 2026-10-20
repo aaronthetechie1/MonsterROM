@@ -5,9 +5,6 @@ ADD_TO_WORK_DIR "r9sxxx" "product" "priv-app/HotwordEnrollmentOKGoogleEx3CORTEXM
 ADD_TO_WORK_DIR "r9sxxx" "product" "priv-app/HotwordEnrollmentXGoogleEx3CORTEXM4/HotwordEnrollmentXGoogleEx3CORTEXM4.apk" 0 0 644 "u:object_r:system_file:s0"
 LOG_STEP_OUT
 
-ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "system" "system/priv-app/DevGPUDriver-EX2100/DevGPUDriver-EX2100.apk" 0 0 644 "u:object_r:system_file:s0"
-ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "system" "system/priv-app/GameDriver-EX2100/GameDriver-EX2100.apk" 0 0 644 "u:object_r:system_file:s0"
-
 if [[ "$TARGET_CODENAME" == "r9s" ]]; then
     ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "system" "system/etc/init/rscmgr_s21fe.rc" 0 0 644 "u:object_r:system_file:s0"
 fi
@@ -20,36 +17,7 @@ if [[ "$TARGET_CODENAME" != "r9s" ]]; then
 fi
 
 LOG_STEP_IN "- Adding 32-bit WFD blobs"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/bin/insthk" 0 2000 755 "u:object_r:insthk_exec:s0"
 ADD_TO_WORK_DIR "r9sxxx" "system" "system/bin/remotedisplay" 0 2000 755 "u:object_r:remotedisplay_exec:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/android.hardware.graphics.extension.composer3-V1-ndk.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libhdcp_client_aidl.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libhdcp2.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libremotedisplay_wfd.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libremotedisplayservice.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/librepeater.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libsecuibc.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libstagefright_hdcp.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libtsmux.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/vendor.samsung.hardware.security.hdcp.wifidisplay-V2-ndk.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/vendor.samsung_slsi.hardware.ExynosHWCServiceTW@1.0.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/vendor.samsung_slsi.hardware.graphics.extension.composer3-V4-ndk.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/wfd_log.so" 0 0 644 "u:object_r:system_lib_file:s0"
-DELETE_FROM_WORK_DIR "system" "system/lib64/android.hardware.graphics.extension.composer3-V1-ndk.so"
-DELETE_FROM_WORK_DIR "system" "system/lib64/libhdcp_client_aidl.so"
-DELETE_FROM_WORK_DIR "system" "system/lib64/libhdcp2.so"
-DELETE_FROM_WORK_DIR "system" "system/lib64/libremotedisplay_wfd.so"
-DELETE_FROM_WORK_DIR "system" "system/lib64/libremotedisplayservice.so"
-DELETE_FROM_WORK_DIR "system" "system/lib64/librepeater.so"
-DELETE_FROM_WORK_DIR "system" "system/lib64/libsecuibc.so"
-DELETE_FROM_WORK_DIR "system" "system/lib64/libstagefright_hdcp.so"
-DELETE_FROM_WORK_DIR "system" "system/lib64/libtsmux.so"
-DELETE_FROM_WORK_DIR "system" "system/lib64/vendor.samsung.hardware.security.hdcp.wifidisplay-V2-ndk.so"
-DELETE_FROM_WORK_DIR "system" "system/lib64/wfd_log.so"
-LOG_STEP_OUT
-
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libhwui.so" 0 0 644 "u:object_r:system_lib_file:s0"
-ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib64/libhwui.so" 0 0 644 "u:object_r:system_lib_file:s0"
 
 LOG_STEP_IN "- Adding HIDL face biometrics libs"
 ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/android.hardware.biometrics.face@1.0.so" 0 0 644 "u:object_r:system_lib_file:s0"
@@ -75,3 +43,34 @@ DELETE_FROM_WORK_DIR "system" "system/lib64/libdk_native_keymint.so"
 ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib64/libdk_native_keymaster.so" 0 0 644 "u:object_r:system_lib_file:s0"
 DELETE_FROM_WORK_DIR "system" "system/lib64/vendor.samsung.hardware.keymint-V1-ndk.so"
 LOG_STEP_OUT
+
+_BACKPORT_HIDL_ENGMODE_CLIENT()
+{
+    local TARGET_FIRMWARE_DIR="$FW_DIR/$(cut -d "/" -f 1 -s <<< "$TARGET_FIRMWARE")_$(cut -d "/" -f 2 -s <<< "$TARGET_FIRMWARE")"
+    local CURRENT_MANAGER="$WORK_DIR/system/system/lib64/lib.engmode.samsung.so"
+    local LEGACY_MANAGER="$TARGET_FIRMWARE_DIR/system/system/lib64/lib.engmode.samsung.so"
+    local LEGACY_INTERFACE="$TARGET_FIRMWARE_DIR/system/system/lib64/vendor.samsung.hardware.security.engmode@1.0.so"
+    local VENDOR_INTERFACE="$WORK_DIR/vendor/lib64/vendor.samsung.hardware.security.engmode@1.0.so"
+
+    [ -f "$CURRENT_MANAGER" ] || return 0
+
+    if ! strings "$CURRENT_MANAGER" | grep -qF "engmode-V1-ndk.so"; then
+        return 0
+    fi
+    if [ ! -f "$VENDOR_INTERFACE" ]; then
+        LOG "- Skipping HIDL EngMode client backport: vendor HIDL service is absent"
+        return 0
+    fi
+    if [ ! -f "$LEGACY_MANAGER" ] || [ ! -f "$LEGACY_INTERFACE" ]; then
+        ABORT "Target HIDL EngMode client libraries are missing"
+    fi
+
+    # The source JNI bridge uses the stable EngMode C ABI exposed by this client.
+    LOG "- Backporting HIDL EngMode client for the legacy vendor HAL"
+    ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "system" "system/lib64/lib.engmode.samsung.so" \
+        0 0 644 "u:object_r:system_lib_file:s0"
+    ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "system" \
+        "system/lib64/vendor.samsung.hardware.security.engmode@1.0.so" \
+        0 0 644 "u:object_r:system_lib_file:s0"
+}
+
