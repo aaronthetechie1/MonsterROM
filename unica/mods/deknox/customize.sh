@@ -3,6 +3,13 @@ if [ "$SOURCE_PLATFORM_SDK_VERSION" = "37" ]; then
     return
 fi
 
+APPLY_PATCH "system" "system/framework/framework.jar" \
+    "$MODPATH/mdf/framework.jar/0001-Disable-MDF.patch"
+APPLY_PATCH "system" "system/framework/services.jar" \
+    "$MODPATH/knoxguard/services.jar/0002-Nuke-KnoxGuardService.patch"
+APPLY_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
+    "$MODPATH/ddar/SecSettings.apk/0002-Nuke-Knox-DualDAR-version.patch"
+
 SET_PROP_IF_DIFF "vendor" "ro.security.fips.ux" "Disabled"
 
 if [[ "$TARGET_OS_SINGLE_SYSTEM_IMAGE" == "qssi" ]]; then

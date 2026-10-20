@@ -286,6 +286,20 @@ UPDATE_BLOBS
             with self.subTest(helper=helper):
                 self.assertRegex(script, re.compile(r'^' + helper + r'\(\)$', re.MULTILINE))
 
+    def test_patch_and_mod_directories_have_module_metadata(self):
+        folders = [ROOT / "platform/exynos2100/patches", ROOT / "unica/patches", ROOT / "unica/mods"]
+        folders += [ROOT / "target" / target / "patches" for target in TARGETS]
+        for folder in folders:
+            if not folder.is_dir():
+                continue
+            for module in folder.iterdir():
+                if not module.is_dir():
+                    continue
+                if (module / "essi").is_dir():
+                    module = module / "essi"
+                with self.subTest(module=str(module.relative_to(ROOT))):
+                    self.assertTrue((module / "module.prop").is_file())
+
     @staticmethod
     def camera_helpers():
         return (ROOT / "unica/patches/camera/customize.sh").read_text().split("# ]", 1)[0]
@@ -520,6 +534,31 @@ source "$SRC_DIR/platform/exynos2100/patches/blobs/customize.sh"
                 path = folder / feature / apk / f"0001-Nuke-Knox-{name}-SDK37.patch"
                 with self.subTest(patch=str(path)):
                     self.assertTrue(path.is_file())
+
+    def test_deknox_selects_one_sdk_specific_mdf_and_knoxguard_route(self):
+        folder = ROOT / "unica/mods/deknox"
+        prefix = (folder / "customize.sh").read_text().split('SET_PROP_IF_DIFF "vendor"', 1)[0]
+        for sdk in (36, 37):
+            with self.subTest(sdk=sdk), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "customize-sdk37.sh").write_text('''
+APPLY_PATCH system system/framework/framework.jar "$MODPATH/ddar/framework.jar/0002-Nuke-MDF-SDK37.patch"
+APPLY_PATCH system system/framework/services.jar "$MODPATH/knoxguard/services.jar/0001-Disable-KnoxGuard-SDK37.patch"
+''')
+                result = run_bash('''
+APPLY_PATCH() { echo "$3"; }
+RUN_MODULE() {
+''' + prefix + '''
+}
+RUN_MODULE
+''', root, SOURCE_PLATFORM_SDK_VERSION=sdk, MODPATH=root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                routes = result.stdout.splitlines()
+                self.assertEqual(sum("MDF" in path for path in routes), 1)
+                self.assertEqual(sum("KnoxGuard" in path for path in routes), 1)
+                self.assertTrue(all(("SDK37" in path) == (sdk == 37) for path in routes))
+        self.assertFalse((folder / "smali/system/framework/framework.jar/0002-Disable-MDF.patch").exists())
+        self.assertFalse((folder / "smali/system/framework/services.jar/0002-Nuke-KnoxGuardService.patch").exists())
 
     def test_selinux_cleanup_uses_the_selected_system_ext_layout(self):
         for separate in (True, False):
