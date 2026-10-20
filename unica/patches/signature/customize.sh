@@ -12,11 +12,16 @@ fi
 APPLY_PATCH "system" "system/framework/services.jar" "$MODPATH/services.jar/0001-Allow-custom-platform-signature$SIGNATURE_PATCH_SUFFIX.patch"
 
 CERT_SIGNATURE="$(sed "/CERTIFICATE/d" "$SRC_DIR/security/${CERT_PREFIX}_platform.x509.pem" | tr -d "\n" | base64 -d | xxd -p -c 0)"
-SMALI_PATCH "system" "system/framework/services.jar" \
-    "smali_classes2/com/android/server/pm/ScanPackageUtils.smali" "replace" \
-    'signedWithCustomSignature([Landroid/content/pm/Signature;)Z' \
-    'CONFIG_CUSTOM_PLATFORM_SIGNATURE' \
-    "$CERT_SIGNATURE" \
-    > /dev/null
+if [ "$SOURCE_PLATFORM_SDK_VERSION" = "37" ]; then
+    SMALI_PATCH "system" "system/framework/services.jar" \
+        "smali_classes2/com/android/server/pm/InstallPackageHelper.smali" "replace" \
+        '<init>(Lcom/android/server/pm/PackageManagerService;Lcom/android/server/pm/AppDataHelper;Lcom/android/server/pm/RemovePackageHelper;Lcom/android/server/pm/DeletePackageHelper;Lcom/android/server/pm/BroadcastHelper;)V' \
+        'CONFIG_CUSTOM_PLATFORM_SIGNATURE' "$CERT_SIGNATURE" > /dev/null
+else
+    SMALI_PATCH "system" "system/framework/services.jar" \
+        "smali_classes2/com/android/server/pm/ScanPackageUtils.smali" "replace" \
+        'signedWithCustomSignature([Landroid/content/pm/Signature;)Z' \
+        'CONFIG_CUSTOM_PLATFORM_SIGNATURE' "$CERT_SIGNATURE" > /dev/null
+fi
 
 unset CERT_PREFIX CERT_SIGNATURE SIGNATURE_PATCH_SUFFIX

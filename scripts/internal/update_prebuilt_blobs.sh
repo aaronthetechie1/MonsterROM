@@ -102,7 +102,7 @@ UPDATE_BLOBS()
         fi
         FILE_PATH="$PREBUILTS_DIR/${i//system\/system\//system/}"
 
-        if [ ! -f "$FW_DIR/${MODEL}_${CSC}/$i" ]; then
+        if [ ! -f "$FW_DIR/${MODEL}_${CSC}/$i" ] && [ ! -L "$FW_DIR/${MODEL}_${CSC}/$i" ]; then
             LOGW "Removing stale blob missing from latest firmware: prebuilts/samsung/$DEVICE/$i"
             REMOVE_PREBUILT_FILE "$FILE_PATH" || exit 1
             continue

@@ -257,6 +257,8 @@ source "$SRC_DIR/platform/exynos2100/patches/codec2/customize.sh"
             (prebuilt / "old.so").write_text("obsolete")
             (prebuilt / "model.so").symlink_to("old.so")
             (firmware / "model.so").symlink_to("new.so")
+            (prebuilt / "absolute.so").symlink_to("/apex/old/lib.so")
+            (firmware / "absolute.so").symlink_to("/apex/com.android.runtime/lib/bionic/libc.so")
             (firmware / "new.so").write_text("new model")
             (root / "fw/SM-TEST_EUX/.extracted").write_text("TEST_BUILD")
             result = run_bash(functions + '''
@@ -274,6 +276,8 @@ UPDATE_BLOBS
             self.assertFalse((prebuilt / "old.so").exists())
             self.assertEqual(os.readlink(prebuilt / "model.so"), "new.so")
             self.assertEqual((prebuilt / "model.so").read_text(), "new model")
+            self.assertEqual(os.readlink(prebuilt / "absolute.so"),
+                             "/apex/com.android.runtime/lib/bionic/libc.so")
 
     def test_bluetooth_apex_helpers_are_present(self):
         script = (ROOT / "unica/patches/bluetooth/customize.sh").read_text()
@@ -281,6 +285,120 @@ UPDATE_BLOBS
                        "EXTRACT_PAYLOAD", "BUILD_PAYLOAD", "SIGN_PAYLOAD", "BUILD_APEX", "SIGN_APEX"):
             with self.subTest(helper=helper):
                 self.assertRegex(script, re.compile(r'^' + helper + r'\(\)$', re.MULTILINE))
+
+    @staticmethod
+    def camera_helpers():
+        return (ROOT / "unica/patches/camera/customize.sh").read_text().split("# ]", 1)[0]
+
+    def test_camera_manifest_resolves_system_vendor_and_directory_models(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "system/system/cameradata").mkdir(parents=True)
+            (root / "vendor/etc/portrait_data").mkdir(parents=True)
+            (root / "system/system/cameradata/model with spaces.bin").write_bytes(b"model")
+            (root / "vendor/etc/portrait_data/model.bin").write_bytes(b"model")
+            manifest = root / "manifest.json"
+            manifest.write_text('''{
+                "system_model": "/system/cameradata/model with spaces.bin",
+                "vendor_model": "/vendor/etc/portrait_data/model.bin",
+                "model_directory": "/vendor/etc/portrait_data/"
+            }''')
+            result = run_bash(self.camera_helpers() + '''
+ABORT() { echo "$*" >&2; return 1; }
+VALIDATE_CAMERA_MODEL_MANIFEST "$WORK_DIR/manifest.json"
+''', root)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_camera_manifest_rejects_corrupt_or_missing_models(self):
+        cases = {
+            "empty manifest": "",
+            "invalid JSON": '{"model":',
+            "missing system model": '{"model":"/system/cameradata/missing.bin"}',
+            "missing vendor model": '{"model":"/vendor/etc/missing.bin"}',
+            "missing model directory": '{"model":"/vendor/etc/missing/"}',
+            "empty model": '{"model":"/system/cameradata/empty.bin"}',
+        }
+        for name, content in cases.items():
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "system/system/cameradata").mkdir(parents=True)
+                (root / "system/system/cameradata/empty.bin").touch()
+                (root / "manifest.json").write_text(content)
+                result = run_bash(self.camera_helpers() + '''
+ABORT() { echo "$*" >&2; return 1; }
+VALIDATE_CAMERA_MODEL_MANIFEST "$WORK_DIR/manifest.json"
+''', root)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("camera", result.stderr.lower())
+
+    def test_camera_tflite_requires_the_flatbuffer_identifier(self):
+        cases = {
+            "portable TFLite": (b"\x1c\x00\x00\x00TFL3model", True),
+            "different format": (b"\x1c\x00\x00\x00DLC1model", False),
+            "identifier at wrong offset": (b"TFL3model", False),
+            "empty model": (b"", False),
+        }
+        for name, (content, valid) in cases.items():
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "model.tflite").write_bytes(content)
+                result = run_bash(self.camera_helpers() + '''
+IS_PORTABLE_TFLITE "$WORK_DIR/model.tflite"
+''', root)
+                self.assertEqual(result.returncode == 0, valid, result.stderr)
+
+    def test_camera_action_classifier_keeps_only_a_matching_target_runtime(self):
+        script = (ROOT / "unica/patches/camera/customize.sh").read_text()
+        block = script.split("# SEC_PRODUCT_FEATURE_CAMERA_CONFIG_ACTION_CLASSIFIER\n", 1)[1]
+        block = block.split("# SEC_PRODUCT_FEATURE_CAMERA_CONFIG_GPPM_SOLUTIONS", 1)[0]
+        cases = ("matched", "no legacy classifier", "different classifier",
+                 "different OpenCV", "missing TensorFlow", "orphan TensorFlow")
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                library = Path("system/system/lib64")
+                target = root / "fw/SM-TARGET_EUX"
+                current = root / "work"
+                names = ("libVideoClassifier.camera.samsung.so", "libOpenCv.camera.samsung.so",
+                         "libtensorflowLite2_11_0_dynamic_camera.so")
+                for base in (target, current):
+                    (base / library).mkdir(parents=True)
+                (target / "vendor/etc/singletake/dynamic_viewing").mkdir(parents=True)
+                (target / "vendor/etc/singletake/dynamic_viewing/model.tflite").write_bytes(b"model")
+                for name in names:
+                    (target / library / name).write_bytes(name.encode())
+                for name in names[:2]:
+                    (current / library / name).write_bytes(name.encode())
+                if case == "no legacy classifier":
+                    (current / library / names[0]).unlink()
+                elif case == "different classifier":
+                    (current / library / names[0]).write_bytes(b"unexpected")
+                elif case == "different OpenCV":
+                    (current / library / names[1]).write_bytes(b"unexpected")
+                elif case == "missing TensorFlow":
+                    (target / library / names[2]).unlink()
+                elif case == "orphan TensorFlow":
+                    (current / library / names[0]).unlink()
+                    (current / library / names[2]).write_bytes(b"unexpected")
+                result = run_bash(self.camera_helpers() + '''
+ABORT() { echo "$*" >&2; return 1; }
+LOG() { :; }
+GET_FLOATING_FEATURE_CONFIG() { echo 1,0; }
+ADD_TO_WORK_DIR() {
+    mkdir -p "$WORK_DIR/$2/$(dirname "$3")"
+    cp -a "$FW_DIR/$TARGET_FIRMWARE_PATH/$2/$3" "$WORK_DIR/$2/$3"
+}
+DELETE_FROM_WORK_DIR() { rm -f "$WORK_DIR/$1/$2"; }
+''' + block, current, FW_DIR=root / "fw", SOURCE_FIRMWARE_PATH="SM-SOURCE_EUX",
+                    TARGET_FIRMWARE_PATH="SM-TARGET_EUX", TARGET_FIRMWARE="SM-TARGET/EUX/12345678",
+                    SOURCE_PLATFORM_SDK_VERSION=37)
+                valid = case in ("matched", "no legacy classifier")
+                self.assertEqual(result.returncode == 0, valid, result.stderr)
+                if valid:
+                    self.assertTrue((current / "vendor/etc/singletake/dynamic_viewing/model.tflite").is_file())
+                    self.assertEqual((current / library / names[2]).exists(), case == "matched")
+                else:
+                    self.assertIn("classifier", result.stderr.lower())
 
     def test_build_cache_tracks_scripts_and_prebuilts(self):
         script = (ROOT / "scripts/make_rom.sh").read_text()
@@ -302,6 +420,37 @@ GET_WORK_DIR_HASH
             hashes = result.stdout.splitlines()
             self.assertEqual(len(hashes), 3)
             self.assertEqual(len(set(hashes)), 3)
+
+    def test_platform_certificate_reaches_the_selected_sdk_patch(self):
+        for sdk in (36, 37):
+            with self.subTest(sdk=sdk), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "security").mkdir()
+                (root / "security/aosp_platform.x509.pem").write_text(
+                    "-----BEGIN CERTIFICATE-----\nYQ==\n-----END CERTIFICATE-----\n")
+                folder = root / "apktool/system/framework/services.jar/smali_classes2/com/android/server/pm"
+                folder.mkdir(parents=True)
+                name = "InstallPackageHelper" if sdk == 37 else "ScanPackageUtils"
+                method = ("<init>(Lcom/android/server/pm/PackageManagerService;"
+                          "Lcom/android/server/pm/AppDataHelper;Lcom/android/server/pm/RemovePackageHelper;"
+                          "Lcom/android/server/pm/DeletePackageHelper;Lcom/android/server/pm/BroadcastHelper;)V"
+                          if sdk == 37 else "signedWithCustomSignature([Landroid/content/pm/Signature;)Z")
+                decoded = folder / (name + ".smali")
+                decoded.write_text('.class public LExample;\n.super Ljava/lang/Object;\n'
+                                   f'.method public {method}\n    .locals 1\n'
+                                   '    const-string v0, "CONFIG_CUSTOM_PLATFORM_SIGNATURE"\n'
+                                   '    return-void\n.end method\n')
+                result = run_bash('''
+source "$SRC_DIR/scripts/utils/module_utils.sh"
+DECODE_APK() { :; }; APPLY_PATCH() { :; }
+MODULE="$SRC_DIR/unica/patches/signature/customize.sh"
+SRC_DIR="$FIXTURE_DIR"
+source "$MODULE"
+''', root, APKTOOL_DIR=root / "apktool", FIXTURE_DIR=root,
+                    SOURCE_PLATFORM_SDK_VERSION=sdk, ROM_IS_OFFICIAL="false")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('const-string v0, "61"', decoded.read_text())
+                self.assertNotIn("CONFIG_CUSTOM_PLATFORM_SIGNATURE", decoded.read_text())
 
     def test_engmode_client_is_backported_for_each_target(self):
         for target in TARGETS:

@@ -12,6 +12,78 @@ LOG_MISSING_PATCHES()
     fi
 }
 
+# VALIDATE_CAMERA_MODEL_MANIFEST <manifest>
+VALIDATE_CAMERA_MODEL_MANIFEST()
+{
+    local MANIFEST="$1"
+    local MODEL_PATH
+    local WORK_FILE
+
+    if [ ! -s "$MANIFEST" ]; then
+        ABORT "Missing camera model manifest: ${MANIFEST//$WORK_DIR/}"
+        return 1
+    fi
+    if command -v python3 > /dev/null 2>&1 && \
+            ! python3 -m json.tool "$MANIFEST" > /dev/null 2>&1; then
+        ABORT "Malformed camera model manifest: ${MANIFEST//$WORK_DIR/}"
+        return 1
+    fi
+
+    while IFS= read -r MODEL_PATH; do
+        case "$MODEL_PATH" in
+            /system/*)
+                WORK_FILE="$WORK_DIR/system/system/${MODEL_PATH#/system/}"
+                ;;
+            /vendor/*)
+                WORK_FILE="$WORK_DIR/vendor/${MODEL_PATH#/vendor/}"
+                ;;
+            *)
+                continue
+                ;;
+        esac
+
+        if [[ "$MODEL_PATH" == */ ]] && [ ! -d "$WORK_FILE" ]; then
+            ABORT "Camera manifest references a missing model directory: $MODEL_PATH"
+            return 1
+        elif [[ "$MODEL_PATH" != */ ]] && [ ! -s "$WORK_FILE" ]; then
+            ABORT "Camera manifest references a missing model: $MODEL_PATH"
+            return 1
+        fi
+    done < <(grep -o -E '"/(system|vendor)/[^"]+"' "$MANIFEST" 2> /dev/null | tr -d '"' || true)
+}
+
+# IS_PORTABLE_TFLITE <file>
+IS_PORTABLE_TFLITE()
+{
+    [ -s "$1" ] && [[ "$(dd if="$1" bs=1 skip=4 count=4 2> /dev/null)" == "TFL3" ]]
+}
+
+USE_TARGET_ACTION_CLASSIFIER_MODELS()
+{
+    local CLASSIFIER="system/lib64/libVideoClassifier.camera.samsung.so"
+    local TENSORFLOW="system/lib64/libtensorflowLite2_11_0_dynamic_camera.so"
+    local OPENCV="system/lib64/libOpenCv.camera.samsung.so"
+
+    if [ -e "$WORK_DIR/system/$CLASSIFIER" ]; then
+        # The Exynos platform imports the target classifier. Keep its original
+        # TensorFlow dependency and models together, with the matching OpenCV.
+        if ! cmp -s "$WORK_DIR/system/$CLASSIFIER" "$FW_DIR/$TARGET_FIRMWARE_PATH/system/$CLASSIFIER" || \
+                ! cmp -s "$WORK_DIR/system/$OPENCV" "$FW_DIR/$TARGET_FIRMWARE_PATH/system/$OPENCV" || \
+                [ ! -s "$FW_DIR/$TARGET_FIRMWARE_PATH/system/$TENSORFLOW" ]; then
+            ABORT "Target action classifier requires its original classifier, OpenCV and TensorFlow runtime"
+            return 1
+        fi
+        ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "system" "$TENSORFLOW" \
+            0 0 644 "u:object_r:system_lib_file:s0" || return 1
+        KEEP_TARGET_ACTION_CLASSIFIER_RUNTIME=true
+    elif [ -e "$WORK_DIR/system/$TENSORFLOW" ]; then
+        ABORT "Action classifier TensorFlow runtime is present without its matching classifier"
+        return 1
+    fi
+    ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "vendor" "etc/singletake/dynamic_viewing" \
+        0 2000 755 "u:object_r:vendor_configs_file:s0"
+}
+
 USE_TARGET_SMART_CROP_GPU_MODEL()
 {
     local MODEL="etc/singletake/SmartCrop/SmartCrop.tflite"
@@ -267,6 +339,7 @@ else
 fi
 
 # SEC_PRODUCT_FEATURE_CAMERA_CONFIG_ACTION_CLASSIFIER
+KEEP_TARGET_ACTION_CLASSIFIER_RUNTIME=false
 SOURCE_CAMERA_CONFIG_ACTION_CLASSIFIER="$(GET_FLOATING_FEATURE_CONFIG "$FW_DIR/$SOURCE_FIRMWARE_PATH/system/system/etc/floating_feature.xml" "SEC_FLOATING_FEATURE_CAMERA_CONFIG_ACTION_CLASSIFIER")"
 TARGET_CAMERA_CONFIG_ACTION_CLASSIFIER="$(GET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_CAMERA_CONFIG_ACTION_CLASSIFIER")"
 if [ "$SOURCE_CAMERA_CONFIG_ACTION_CLASSIFIER" ]; then
@@ -279,14 +352,11 @@ if [ "$SOURCE_CAMERA_CONFIG_ACTION_CLASSIFIER" ]; then
         elif [ "$SOURCE_PLATFORM_SDK_VERSION" -eq 37 ] && \
                 [ ! -e "$FW_DIR/$SOURCE_FIRMWARE_PATH/system/system/lib64/libVideoClassifier.camera.samsung.so" ] && \
                 [ ! -e "$FW_DIR/$SOURCE_FIRMWARE_PATH/system/system/lib64/libtensorflowLite2_11_0_dynamic_camera.so" ] && \
-                [ ! -e "$WORK_DIR/system/system/lib64/libVideoClassifier.camera.samsung.so" ] && \
-                [ ! -e "$WORK_DIR/system/system/lib64/libtensorflowLite2_11_0_dynamic_camera.so" ] && \
                 [ -d "$FW_DIR/$TARGET_FIRMWARE_PATH/vendor/etc/singletake/dynamic_viewing" ]; then
-            # SDK 37 removed this legacy model/runtime pair. Preserve the
-            # original target assets; do not fabricate a donor directory or
-            # change the action-classifier feature flags/new implementation.
+            # SDK 37 removed the donor's legacy model/runtime pair. Preserve
+            # the target assets and any matching classifier imported earlier.
             LOG "- Preserving original target legacy dynamic-viewing model assets"
-            ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "vendor" "etc/singletake/dynamic_viewing" 0 2000 755 "u:object_r:vendor_configs_file:s0"
+            USE_TARGET_ACTION_CLASSIFIER_MODELS || return 1
         else
             ABORT "Source dynamic-viewing models are missing or the legacy classifier runtime is incomplete"
             return 1
@@ -294,7 +364,8 @@ if [ "$SOURCE_CAMERA_CONFIG_ACTION_CLASSIFIER" ]; then
     else
         DELETE_FROM_WORK_DIR "system" "system/lib64/libVideoClassifier.camera.samsung.so"
     fi
-    if [ -f "$WORK_DIR/system/system/lib64/libtensorflowLite2_11_0_dynamic_camera.so" ]; then
+    if ! $KEEP_TARGET_ACTION_CLASSIFIER_RUNTIME && \
+            [ -f "$WORK_DIR/system/system/lib64/libtensorflowLite2_11_0_dynamic_camera.so" ]; then
         DELETE_FROM_WORK_DIR "system" "system/lib64/libtensorflowLite2_11_0_dynamic_camera.so"
     fi
 else
@@ -621,6 +692,7 @@ if [ ! "$(find "$WORK_DIR/product/overlay" -maxdepth 1 -type f -name "SystemUI*"
 fi
 
 unset SOURCE_FIRMWARE_PATH TARGET_FIRMWARE_PATH \
+    KEEP_TARGET_ACTION_CLASSIFIER_RUNTIME \
     SOURCE_CAMERA_CONFIG_ACTION_CLASSIFIER TARGET_CAMERA_CONFIG_ACTION_CLASSIFIER \
     SOURCE_CAMERA_CONFIG_GPPM_SOLUTIONS TARGET_CAMERA_CONFIG_GPPM_SOLUTIONS \
     SOURCE_GALLERY_CONFIG_PET_CLUSTER_VERSION TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION \
@@ -628,4 +700,5 @@ unset SOURCE_FIRMWARE_PATH TARGET_FIRMWARE_PATH \
     SOURCE_SAIV_CONFIG_ARDOODLE_LIB TARGET_SAIV_CONFIG_ARDOODLE_LIB \
     SOURCE_CAMERA_CONFIG_VENDOR_LIB_INFO TARGET_CAMERA_CONFIG_VENDOR_LIB_INFO \
     SOURCE_CAMERA_DOCUMENTSCAN_SOLUTIONS TARGET_CAMERA_DOCUMENTSCAN_SOLUTIONS
-unset -f _LOG LOG_MISSING_PATCHES USE_TARGET_SMART_CROP_GPU_MODEL USE_CURRENT_IMAGE_CODEC_NODE
+unset -f _LOG LOG_MISSING_PATCHES VALIDATE_CAMERA_MODEL_MANIFEST IS_PORTABLE_TFLITE \
+    USE_TARGET_ACTION_CLASSIFIER_MODELS USE_TARGET_SMART_CROP_GPU_MODEL USE_CURRENT_IMAGE_CODEC_NODE
