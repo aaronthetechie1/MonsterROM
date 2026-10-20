@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""Check the configured Samsung endpoints without downloading firmware bodies."""
+"""Check Samsung endpoints with a bounded read in the GitHub runner's memory."""
 
 import json
 from pathlib import Path
@@ -61,16 +61,29 @@ for device, path, variable in configs:
         main.initdownload(client, name)
         authorization = (f'FUS nonce="{client.encnonce}", signature="{client.auth}", '
                          'nc="", type="", realm="", newauth="1"')
-        with requests.head(
+        started = time.monotonic()
+        with requests.get(
             "http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do",
-            params={"file": remote_path + name},
+            params="file=" + remote_path + name,
             headers={"Authorization": authorization, "User-Agent": "Kies2.0_FUS",
-                     "X-FUS-Protocol-Ver": "2.0"},
+                     "X-FUS-Protocol-Ver": "2.0", "Range": "bytes=0-1048575"},
             allow_redirects=True,
+            stream=True,
         ) as response:
             print(json.dumps({"download_endpoint_status": response.status_code,
                               "content_length": response.headers.get("Content-Length")}), flush=True)
             response.raise_for_status()
+            received = 0
+            for chunk in response.iter_content(chunk_size=65536):
+                received += len(chunk)
+                if received >= 1048576 or time.monotonic() - started >= 10:
+                    break
+            elapsed = time.monotonic() - started
+            print(json.dumps({"probe_bytes": received, "elapsed_seconds": round(elapsed, 2),
+                              "bytes_per_second": round(received / max(elapsed, 0.001)),
+                              "firmware_written_to_disk": False}), flush=True)
+            if received == 0:
+                raise RuntimeError("Download endpoint returned no data")
     except (Exception, SystemExit) as error:
         print(f"{device}: {type(error).__name__}: {error}", flush=True)
         failed = True

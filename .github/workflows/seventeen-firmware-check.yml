@@ -41,5 +41,5 @@ jobs:
           git submodule update --init --depth=1 external/samloader
           python -m pip install ./external/samloader
 
-      - name: Check metadata and download endpoint headers
+      - name: Check metadata and bounded download probe
         run: timeout 300 python -u .github/scripts/check_firmware_connection.py
