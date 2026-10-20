@@ -18,9 +18,15 @@ APPLY_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
     "$MODPATH/suggestions/SecSettings.apk/0001-Launch-UN1CA-Updates-from-suggestions.patch"
 
 # Disable stock OTA references
-SMALI_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
-    "smali_classes3/com/samsung/android/settings/softwareupdate/SoftwareUpdateUtils.smali" "return" \
-    "isOTAUpgradeAllowed(Landroid/content/Context;)Z" "false"
+if [ "$SOURCE_PLATFORM_SDK_VERSION" = "37" ]; then
+    SMALI_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
+        "smali_classes3/com/samsung/android/settings/homepage/TopLevelSoftwareUpdatePreferenceController.smali" "return" \
+        "getAvailabilityStatus()I" "3"
+else
+    SMALI_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
+        "smali_classes3/com/samsung/android/settings/softwareupdate/SoftwareUpdateUtils.smali" "return" \
+        "isOTAUpgradeAllowed(Landroid/content/Context;)Z" "false"
+fi
 
 # Dynamically patch SecSettings
 # - Add missing/non-xml files in place
@@ -29,6 +35,11 @@ SMALI_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
 #   - Exception made for files under *res/values* where the "resources" tag gets nuked
 while IFS= read -r f; do
     f="${f//$MODPATH\/SecSettings.apk\//}"
+
+    case "$f" in
+        smali_classes3/*) [ "$SOURCE_PLATFORM_SDK_VERSION" = "37" ] || continue ;;
+        smali_classes4/*) [ "$SOURCE_PLATFORM_SDK_VERSION" != "37" ] || continue ;;
+    esac
 
     if [ ! -f "$APKTOOL_DIR/system/priv-app/SecSettings/SecSettings.apk/$f" ] || \
             [[ "$f" != *".xml" ]]; then
