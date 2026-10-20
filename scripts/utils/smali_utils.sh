@@ -107,9 +107,14 @@ SMALI_PATCH()
         return 0
     fi
 
-    # Check if provided method is method and exists inside smali
-    if ! grep "^\.method.*" "$FILE_PATH/$SMALI" | grep -q -F -- "$METHOD" "$FILE_PATH/$SMALI"; then
-        LOGE "Method \"$METHOD\" not found in /$PARTITION/$FILE/$SMALI"
+    # Match a complete declaration. A call site or a longer method name is not
+    # a valid target, and duplicate declarations must not be patched together.
+    local METHOD_DECLARATIONS=()
+    mapfile -t METHOD_DECLARATIONS < <(awk -v FN="$METHOD" '
+        /^\.method/ && $NF == FN { print }
+    ' "$FILE_PATH/$SMALI")
+    if [[ "$OPERATION" != "replaceall" ]] && [ "${#METHOD_DECLARATIONS[@]}" -ne 1 ]; then
+        LOGE "Expected exactly one declaration of method \"$METHOD\" in /$PARTITION/$FILE/$SMALI"
 
         local MATCHES
         MATCHES="$(grep -r "^\.method.*$METHOD" "$FILE_PATH")"
@@ -150,7 +155,7 @@ SMALI_PATCH()
 
         awk -v FN="$METHOD" '
             BEGIN { inside = 0; skip = 0 }
-            /^\.method/ && index($0, FN) {
+            /^\.method/ && $NF == FN {
                 inside = 1
                 next
             }
@@ -192,7 +197,7 @@ SMALI_PATCH()
 
         awk -v FN="$METHOD" -v LOC="$LOC" -v RET="$RET" '
             BEGIN { inside = 0 }
-            /^\.method/ && index($0, FN) {
+            /^\.method/ && $NF == FN {
                 print
                 print "    " LOC
                 print "    "
@@ -224,8 +229,7 @@ SMALI_PATCH()
         # Decide on register
         REG="p0"
         LOC=".locals 0"
-        if [[ "$(grep "^\.method.*" "$FILE_PATH/$SMALI" | \
-                    grep -F -- "$METHOD" "$FILE_PATH/$SMALI")" == *" static "* ]] && \
+        if [[ "${METHOD_DECLARATIONS[0]}" == *" static "* ]] && \
                 [[ "$METHOD" == *"()"* ]]; then
             REG="v0"
             LOC=".locals 1"
@@ -318,7 +322,7 @@ SMALI_PATCH()
 
         awk -v FN="$METHOD" -v LOC="$LOC" -v VAL="$VALUE" -v RET="$RET" '
             BEGIN { inside = 0 }
-            /^\.method/ && index($0, FN) {
+            /^\.method/ && $NF == FN {
                 print
                 print "    " LOC
                 print ""
@@ -346,11 +350,38 @@ SMALI_PATCH()
     # Replace a string with another string inside the method
     # or Replace a line with another line inside the method
     elif [[ "$OPERATION" == "replace" ]]; then
+        local METHOD_CONTENT
+        METHOD_CONTENT="$(awk -v FN="$METHOD" '
+            /^\.method/ && $NF == FN { inside = 1 }
+            inside { print }
+            inside && /^\.end method/ { exit }
+        ' "$FILE_PATH/$SMALI")"
+
+        # Accept a cached single-line replacement only in the selected method,
+        # using the same literal string/instruction matching as the edit below.
+        if [[ "$REPLACEMENT" != *$'\n'* ]] && awk -v STR="$VALUE" -v REP="$REPLACEMENT" '
+            {
+                line = $0
+                gsub(/^[ \t]+|[ \t]+$/, "", line)
+                if ($0 ~ /^[[:space:]]*const-string(\/jumbo)?/) {
+                    if (index($0, "\"" STR "\"")) old = 1
+                    if (index($0, "\"" REP "\"")) patched = 1
+                } else {
+                    if (line == STR) old = 1
+                    if (line == REP) patched = 1
+                }
+            }
+            END { exit (old || !patched) }
+        ' <<< "$METHOD_CONTENT"; then
+            LOG "- Value in method \"$METHOD\" is already patched; skipping"
+            return 0
+        fi
+
         LOG "- Replacing value \"$VALUE\" of method \"$METHOD\" in /$PARTITION/$FILE/$SMALI with \"$REPLACEMENT\""
 
         awk -v FN="$METHOD" -v STR="$VALUE" -v REP="$REPLACEMENT" '
             BEGIN { inside = 0; isline = (index(REP, "\n") > 0) }
-            /^\.method/ && index($0, FN) { inside = 1 }
+            /^\.method/ && $NF == FN { inside = 1 }
             inside {
                 if (isline) {
                     if (index($0, STR)) {
@@ -359,7 +390,11 @@ SMALI_PATCH()
                         next
                     }
                 } else if ($0 ~ /^[[:space:]]*const-string(\/jumbo)?/) {
-                    sub("\"" STR "\"", "\"" REP "\"")
+                    needle = "\"" STR "\""
+                    pos = index($0, needle)
+                    if (pos) {
+                        $0 = substr($0, 1, pos - 1) "\"" REP "\"" substr($0, pos + length(needle))
+                    }
                 } else {
                     line = $0
                     gsub(/^[ \t]+|[ \t]+$/, "", line)

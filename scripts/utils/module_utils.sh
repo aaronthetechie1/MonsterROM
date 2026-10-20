@@ -213,13 +213,17 @@ SET_FLOATING_FEATURE_CONFIG()
         return 1
     fi
 
-    if grep -q "<$CONFIG>" "$FILE"; then
+    if grep -Fq "<$CONFIG>" "$FILE"; then
         if [[ "$VALUE" == "-d" ]] || [[ "$VALUE" == "--delete" ]]; then
             LOG "- Deleting \"$CONFIG\" config in /system/system/etc/floating_feature.xml"
             sed -i "/<$CONFIG>/d" "$FILE"
         else
             LOG "- Replacing \"$CONFIG\" config with \"$VALUE\" in /system/system/etc/floating_feature.xml"
-            sed -i "$(sed -n "/<${CONFIG}>/=" "$FILE") c\ \ \ \ <${CONFIG}>${VALUE}</${CONFIG}>" "$FILE"
+            # Repeated or cached builds may contain more than one copy. Drop
+            # every exact tag before inserting one value; multiple line numbers
+            # passed to sed's c command can corrupt unrelated feature entries.
+            sed -i "/<${CONFIG}>/d" "$FILE"
+            sed -i "/<\/SecFloatingFeatureSet>/i\ \ \ \ <${CONFIG}>${VALUE}</${CONFIG}>" "$FILE"
         fi
     elif [[ "$VALUE" != "-d" ]] && [[ "$VALUE" != "--delete" ]]; then
         LOG "- Adding \"$CONFIG\" config with \"$VALUE\" in /system/system/etc/floating_feature.xml"
