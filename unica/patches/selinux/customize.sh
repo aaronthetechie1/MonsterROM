@@ -57,6 +57,10 @@ GET_SYSTEM_EXT()
 
 CIL_NAME="$(head -n 1 "$WORK_DIR/vendor/etc/selinux/plat_sepolicy_vers.txt")"
 PATCHED=false
+if [ "$SOURCE_PLATFORM_SDK_VERSION" -ge "37" ]; then
+    source "$MODPATH/mapping-sdk37.sh"
+    RESTORE_SDK37_SEPOLICY_MAPPING
+fi
 VENDOR_API_LIST="$(find "$WORK_DIR/$(GET_SYSTEM_EXT)/etc/selinux/mapping" -type f -printf "%f\n" | \
                     sed '/.compat./d' | sed 's/.cil//' | sed 's/\./_/' | sort)"
 # ]
@@ -97,6 +101,11 @@ done
 
 if ! $PATCHED; then
     LOG "\033[0;33m! Nothing to do\033[0m"
+fi
+
+if [ "$SOURCE_PLATFORM_SDK_VERSION" -ge "37" ]; then
+    CHECK_SDK37_SEPOLICY
+    unset -f RESTORE_SDK37_SEPOLICY_MAPPING CHECK_SDK37_SEPOLICY
 fi
 
 unset ENTRIES DUPLICATES CIL_NAME PATCHED VENDOR_API_LIST
