@@ -1,0 +1,25 @@
+Subject: [PATCH] Enable legacy dynamic resolution on the SDK37 framework
+
+Keep the legacy forced-size route for pre-36 targets. SDK37 renamed the
+resolution vote and shell-transition flags; do not enable the separate
+native multi-resolution or density-mapping policy. In this initializer
+v3 is the unchanged true constant and v4 is the unchanged false constant.
+
+diff --git a/smali_classes6/com/samsung/android/rune/CoreRune.smali b/smali_classes6/com/samsung/android/rune/CoreRune.smali
+--- a/smali_classes6/com/samsung/android/rune/CoreRune.smali
++++ b/smali_classes6/com/samsung/android/rune/CoreRune.smali
+@@ -2993,11 +2993,11 @@
+ 
+     sput-boolean v4, Lcom/samsung/android/rune/CoreRune;->FW_SUPPORT_MULTI_RESOLUTION:Z
+ 
+-    sput-boolean v4, Lcom/samsung/android/rune/CoreRune;->FW_DYNAMIC_RESOLUTION_CONTROL:Z
++    sput-boolean v3, Lcom/samsung/android/rune/CoreRune;->FW_DYNAMIC_RESOLUTION_CONTROL:Z
+ 
+-    sput-boolean v4, Lcom/samsung/android/rune/CoreRune;->FW_RESOLUTION_VOTE_POLICY:Z
++    sput-boolean v3, Lcom/samsung/android/rune/CoreRune;->FW_RESOLUTION_VOTE_POLICY:Z
+ 
+-    sput-boolean v4, Lcom/samsung/android/rune/CoreRune;->FW_RESOLUTION_POLICY_FOR_SHELL_TRANSITION:Z
++    sput-boolean v3, Lcom/samsung/android/rune/CoreRune;->FW_RESOLUTION_POLICY_FOR_SHELL_TRANSITION:Z
+ 
+     sput-boolean v4, Lcom/samsung/android/rune/CoreRune;->FW_MULTI_RESOLUTION_POLICY:Z
+

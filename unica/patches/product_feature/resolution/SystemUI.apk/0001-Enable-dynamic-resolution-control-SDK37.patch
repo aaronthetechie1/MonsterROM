@@ -1,0 +1,218 @@
+From: UN1CA <unica@localhost>
+Subject: [PATCH] Enable dynamic-resolution edge lighting on SDK37
+
+Retain current S26 radius resources, model dispatch, cutouts, display lifecycle,
+routine callbacks and existing no-argument method ABI. Propagate the original
+multi-resolution capability from notification, scheduler, preview and routine
+effect creation. Apply the original HD/FHD/WQHD density factor at the current
+radius calculation, without replacing the R8-optimized drawing method.
+---
+diff --git a/smali_classes2/com/android/systemui/edgelighting/effect/data/EdgeEffectInfo.smali b/smali_classes2/com/android/systemui/edgelighting/effect/data/EdgeEffectInfo.smali
+--- a/smali_classes2/com/android/systemui/edgelighting/effect/data/EdgeEffectInfo.smali
++++ b/smali_classes2/com/android/systemui/edgelighting/effect/data/EdgeEffectInfo.smali
+@@ -21,6 +21,8 @@
+ .field public mIsBlackBG:Z
+ 
+ .field public mIsGrayScaled:Z
++
++.field public mIsMultiResolutionSupoorted:Z
+ 
+ .field public mIsSmallIcon:Z
+ 
+@@ -61,3 +63,13 @@
+ 
+     return-void
+ .end method
++
++.method public final enableMultiResolution()V
++    .locals 1
++
++    const/4 v0, 0x1
++
++    iput-boolean v0, p0, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;->mIsMultiResolutionSupoorted:Z
++
++    return-void
++.end method
+diff --git a/smali_classes2/com/android/systemui/edgelighting/scheduler/EdgeLightingScheduler.smali b/smali_classes2/com/android/systemui/edgelighting/scheduler/EdgeLightingScheduler.smali
+--- a/smali_classes2/com/android/systemui/edgelighting/scheduler/EdgeLightingScheduler.smali
++++ b/smali_classes2/com/android/systemui/edgelighting/scheduler/EdgeLightingScheduler.smali
+@@ -301,6 +301,8 @@
+     new-instance v7, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;
+ 
+     invoke-direct {v7}, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;-><init>()V
++
++    invoke-virtual {v7}, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;->enableMultiResolution()V
+ 
+     iget-object v9, v3, Lcom/android/systemui/edgelighting/scheduler/LightingScheduleInfo;->mLightingInfo:Lcom/samsung/android/edge/SemEdgeLightingInfo;
+ 
+diff --git a/smali_classes2/com/android/systemui/edgelighting/scheduler/EdgeLightingScheduler$1.smali b/smali_classes2/com/android/systemui/edgelighting/scheduler/EdgeLightingScheduler$1.smali
+--- a/smali_classes2/com/android/systemui/edgelighting/scheduler/EdgeLightingScheduler$1.smali
++++ b/smali_classes2/com/android/systemui/edgelighting/scheduler/EdgeLightingScheduler$1.smali
+@@ -1747,6 +1747,8 @@
+ 
+     invoke-direct {v9}, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;-><init>()V
+ 
++    invoke-virtual {v9}, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;->enableMultiResolution()V
++
+     iget-object v11, v1, Lcom/android/systemui/edgelighting/scheduler/LightingScheduleInfo;->mLightingInfo:Lcom/samsung/android/edge/SemEdgeLightingInfo;
+ 
+     invoke-virtual {v11}, Lcom/samsung/android/edge/SemEdgeLightingInfo;->getExtra()Landroid/os/Bundle;
+diff --git a/smali_classes2/com/android/systemui/edgelighting/settings/EdgeLightingStyleActivity.smali b/smali_classes2/com/android/systemui/edgelighting/settings/EdgeLightingStyleActivity.smali
+--- a/smali_classes2/com/android/systemui/edgelighting/settings/EdgeLightingStyleActivity.smali
++++ b/smali_classes2/com/android/systemui/edgelighting/settings/EdgeLightingStyleActivity.smali
+@@ -261,6 +261,8 @@
+     new-instance v1, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;
+ 
+     invoke-direct {v1}, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;-><init>()V
++
++    invoke-virtual {v1}, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;->enableMultiResolution()V
+ 
+     iput-object v1, p0, Lcom/android/systemui/edgelighting/settings/EdgeLightingStyleActivity;->mPreviewEffectInfo:Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;
+ 
+diff --git a/smali_classes5/com/samsung/android/sdk/routines/v3/internal/ActionDispatcher$$ExternalSyntheticLambda2.smali b/smali_classes5/com/samsung/android/sdk/routines/v3/internal/ActionDispatcher$$ExternalSyntheticLambda2.smali
+--- a/smali_classes5/com/samsung/android/sdk/routines/v3/internal/ActionDispatcher$$ExternalSyntheticLambda2.smali
++++ b/smali_classes5/com/samsung/android/sdk/routines/v3/internal/ActionDispatcher$$ExternalSyntheticLambda2.smali
+@@ -81,6 +81,8 @@
+     new-instance v2, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;
+ 
+     invoke-direct {v2}, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;-><init>()V
++
++    invoke-virtual {v2}, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;->enableMultiResolution()V
+ 
+     iput-object v2, v0, Lcom/android/systemui/edgelighting/routine/EdgelightingRoutineActionHandler;->mEdgeLightingInfo:Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;
+ 
+diff --git a/smali_classes2/com/android/systemui/edgelighting/effect/container/EdgeLightingDialog.smali b/smali_classes2/com/android/systemui/edgelighting/effect/container/EdgeLightingDialog.smali
+--- a/smali_classes2/com/android/systemui/edgelighting/effect/container/EdgeLightingDialog.smali
++++ b/smali_classes2/com/android/systemui/edgelighting/effect/container/EdgeLightingDialog.smali
+@@ -426,7 +426,9 @@
+     iput-boolean p0, v0, Lcom/android/systemui/edgelighting/effect/container/NotificationEffect;->mIsSwipeDownDisabledForEdgeLightingPlus:Z
+ 
+     :cond_3
+-    invoke-virtual {v0}, Lcom/android/systemui/edgelighting/effect/container/NotificationEffect;->setIsMultiResolutionSupoorted()V
++    iget-boolean p0, p1, Lcom/android/systemui/edgelighting/effect/data/EdgeEffectInfo;->mIsMultiResolutionSupoorted:Z
++
++    invoke-virtual {v0, p0}, Lcom/android/systemui/edgelighting/effect/container/NotificationEffect;->setIsMultiResolutionSupoorted(Z)V
+ 
+     return-object v0
+ 
+diff --git a/smali_classes2/com/android/systemui/edgelighting/effect/container/NotificationEffect.smali b/smali_classes2/com/android/systemui/edgelighting/effect/container/NotificationEffect.smali
+--- a/smali_classes2/com/android/systemui/edgelighting/effect/container/NotificationEffect.smali
++++ b/smali_classes2/com/android/systemui/edgelighting/effect/container/NotificationEffect.smali
+@@ -3262,3 +3262,9 @@
+     :cond_0
+     return-void
+ .end method
++
++.method public setIsMultiResolutionSupoorted(Z)V
++    .locals 0
++
++    return-void
++.end method
+diff --git a/smali_classes2/com/android/systemui/edgelighting/effect/container/NotificationNormalEffect.smali b/smali_classes2/com/android/systemui/edgelighting/effect/container/NotificationNormalEffect.smali
+--- a/smali_classes2/com/android/systemui/edgelighting/effect/container/NotificationNormalEffect.smali
++++ b/smali_classes2/com/android/systemui/edgelighting/effect/container/NotificationNormalEffect.smali
+@@ -482,3 +482,13 @@
+     :cond_2
+     return-void
+ .end method
++
++.method public final setIsMultiResolutionSupoorted(Z)V
++    .locals 0
++
++    iget-object p0, p0, Lcom/android/systemui/edgelighting/effect/container/NotificationNormalEffect;->mLightEffectView:Lcom/android/systemui/edgelighting/effect/view/EdgeLightNotiEffectView;
++
++    iput-boolean p1, p0, Lcom/android/systemui/edgelighting/effect/view/DrawEdgeLayout;->mIsMultiResolutionSupoorted:Z
++
++    return-void
++.end method
+diff --git a/smali_classes2/com/android/systemui/edgelighting/effect/container/NotificationReflectEffect.smali b/smali_classes2/com/android/systemui/edgelighting/effect/container/NotificationReflectEffect.smali
+--- a/smali_classes2/com/android/systemui/edgelighting/effect/container/NotificationReflectEffect.smali
++++ b/smali_classes2/com/android/systemui/edgelighting/effect/container/NotificationReflectEffect.smali
+@@ -300,3 +300,13 @@
+     :cond_1
+     return-void
+ .end method
++
++.method public final setIsMultiResolutionSupoorted(Z)V
++    .locals 0
++
++    iget-object p0, p0, Lcom/android/systemui/edgelighting/effect/container/NotificationReflectEffect;->mReflectEffectView:Lcom/android/systemui/edgelighting/effect/view/ReflectEffectView;
++
++    iput-boolean p1, p0, Lcom/android/systemui/edgelighting/effect/view/DrawEdgeLayout;->mIsMultiResolutionSupoorted:Z
++
++    return-void
++.end method
+diff --git a/smali_classes2/com/android/systemui/edgelighting/effect/view/DrawEdgeLayout.smali b/smali_classes2/com/android/systemui/edgelighting/effect/view/DrawEdgeLayout.smali
+--- a/smali_classes2/com/android/systemui/edgelighting/effect/view/DrawEdgeLayout.smali
++++ b/smali_classes2/com/android/systemui/edgelighting/effect/view/DrawEdgeLayout.smali
+@@ -12,6 +12,8 @@
+ 
+ .field public mHeight:I
+ 
++.field public mIsMultiResolutionSupoorted:Z
++
+ .field public mIsNoFrame:Z
+ 
+ .field public mMaskBgPaint:Landroid/graphics/Paint;
+@@ -1743,6 +1745,10 @@
+ 
+     int-to-float v5, v5
+ 
++    invoke-direct {v0, v5}, Lcom/android/systemui/edgelighting/effect/view/DrawEdgeLayout;->getMultiResolutionDensity(F)F
++
++    move-result v5
++
+     invoke-virtual {v3}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+ 
+     move-result-object v3
+@@ -2799,3 +2805,50 @@
+ 
+     return-void
+ .end method
++
++.method private getMultiResolutionDensity(F)F
++    .locals 3
++
++    iget-boolean v0, p0, Lcom/android/systemui/edgelighting/effect/view/DrawEdgeLayout;->mIsMultiResolutionSupoorted:Z
++
++    if-eqz v0, :unchanged
++
++    invoke-virtual {p0}, Landroid/widget/FrameLayout;->getContext()Landroid/content/Context;
++
++    move-result-object v0
++
++    invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
++
++    move-result-object v0
++
++    invoke-virtual {v0}, Landroid/content/res/Resources;->getDisplayMetrics()Landroid/util/DisplayMetrics;
++
++    move-result-object v0
++
++    iget v1, v0, Landroid/util/DisplayMetrics;->widthPixels:I
++
++    iget v2, v0, Landroid/util/DisplayMetrics;->heightPixels:I
++
++    invoke-static {v1, v2}, Ljava/lang/Math;->min(II)I
++
++    move-result v1
++
++    const/16 v2, 0x438
++
++    if-eq v1, v2, :unchanged
++
++    if-lt v1, v2, :lower_resolution
++
++    const v0, 0x3faaa993    # 1.3333f
++
++    goto :scale
++
++    :lower_resolution
++    const v0, 0x3f2aacda    # 0.6667f
++
++    :scale
++    mul-float/2addr p1, v0
++
++    :unchanged
++    return p1
++.end method

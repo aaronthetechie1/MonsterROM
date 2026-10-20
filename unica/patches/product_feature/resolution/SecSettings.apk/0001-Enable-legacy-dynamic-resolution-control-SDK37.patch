@@ -1,0 +1,1010 @@
+Subject: [PATCH] Enable legacy dynamic resolution in SDK37 Settings
+
+Preserve SDK37 layouts, resources, listeners and unrelated switch cases.
+Use the original legacy forced-size/density implementation for pre-36 targets.
+
+diff --git a/smali_classes3/com/samsung/android/settings/display/controller/ScreenResolutionPreferenceController.smali b/smali_classes3/com/samsung/android/settings/display/controller/ScreenResolutionPreferenceController.smali
+--- a/smali_classes3/com/samsung/android/settings/display/controller/ScreenResolutionPreferenceController.smali
++++ b/smali_classes3/com/samsung/android/settings/display/controller/ScreenResolutionPreferenceController.smali
+@@ -157,11 +157,11 @@
+ .method public getAvailabilityStatus()I
+     .locals 0
+ 
+     sget-object p0, Lcom/samsung/android/settings/Rune;->COMMON_CONFIG_PACKAGE_NAME_SMART_MANAGER:Ljava/lang/String;
+ 
+-    const/4 p0, 0x3
++    const/4 p0, 0x0
+ 
+     return p0
+ .end method
+ 
+ .method public bridge synthetic getBackgroundWorkerClass()Ljava/lang/Class;
+diff --git a/smali_classes3/com/samsung/android/settings/display/controller/SecScreenResolutionSingleChoiceController.smali b/smali_classes3/com/samsung/android/settings/display/controller/SecScreenResolutionSingleChoiceController.smali
+--- a/smali_classes3/com/samsung/android/settings/display/controller/SecScreenResolutionSingleChoiceController.smali
++++ b/smali_classes3/com/samsung/android/settings/display/controller/SecScreenResolutionSingleChoiceController.smali
+@@ -521,11 +521,11 @@
+ .method public getAvailabilityStatus()I
+     .locals 0
+ 
+     sget-object p0, Lcom/samsung/android/settings/Rune;->COMMON_CONFIG_PACKAGE_NAME_SMART_MANAGER:Ljava/lang/String;
+ 
+-    const/4 p0, 0x3
++    const/4 p0, 0x0
+ 
+     return p0
+ .end method
+ 
+ .method public bridge synthetic getBackgroundWorkerClass()Ljava/lang/Class;
+@@ -925,11 +925,19 @@
+ 
+     return p0
+ .end method
+ 
+ .method public setSelectedValue(Ljava/lang/String;)Z
+-    .locals 0
++    .locals 2
++
++    iget-object v0, p0, Lcom/android/settingslib/core/AbstractPreferenceController;->mContext:Landroid/content/Context;
++
++    invoke-static {p1}, Ljava/lang/Integer;->parseInt(Ljava/lang/String;)I
++
++    move-result v1
++
++    invoke-static {v0, v1}, Lcom/samsung/android/settings/display/SecDisplayUtils;->setSelectedScreenResolution(Landroid/content/Context;I)V
+ 
+     invoke-virtual {p0}, Lcom/samsung/android/settings/display/controller/SecScreenResolutionSingleChoiceController;->getSelectedValue()Ljava/lang/String;
+ 
+     move-result-object p0
+ 
+diff --git a/smali_classes3/com/samsung/android/settings/display/SecDisplayUtils.smali b/smali_classes3/com/samsung/android/settings/display/SecDisplayUtils.smali
+--- a/smali_classes3/com/samsung/android/settings/display/SecDisplayUtils.smali
++++ b/smali_classes3/com/samsung/android/settings/display/SecDisplayUtils.smali
+@@ -16,10 +16,529 @@
+ 
+ .field public static mWQHDWidth:I
+ 
+ 
+ # direct methods
++.method public static applyForcedDisplayDensity(III)V
++    .locals 12
++
++    const-string v1, " callers="
++
++    const-string v2, "SecDisplayUtils"
++
++    const-string v3, "applyForcedDisplayDensity: density="
++
++    const/4 v4, 0x5
++
++    :try_start_0
++    invoke-static {}, Landroid/view/WindowManagerGlobal;->getWindowManagerService()Landroid/view/IWindowManager;
++
++    move-result-object v5
++    :try_end_0
++    .catch Landroid/os/RemoteException; {:try_start_0 .. :try_end_0} :catch_1
++    .catchall {:try_start_0 .. :try_end_0} :catchall_1
++
++    const/4 v6, 0x0
++
++    const/4 v10, 0x1
++
++    const/4 v11, -0x1
++
++    move v7, p0
++
++    move v8, p1
++
++    move v9, p2
++
++    :try_start_1
++    invoke-interface/range {v5 .. v11}, Landroid/view/IWindowManager;->setForcedDisplaySizeDensity(IIIIZI)V
++    :try_end_1
++    .catch Landroid/os/RemoteException; {:try_start_1 .. :try_end_1} :catch_0
++    .catchall {:try_start_1 .. :try_end_1} :catchall_0
++
++    invoke-static {v9, v3, v1}, Landroidx/appcompat/widget/ListPopupWindow$$ExternalSyntheticOutline0;->m(ILjava/lang/String;Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    move-result-object p0
++
++    invoke-static {v4}, Landroid/os/Debug;->getCallers(I)Ljava/lang/String;
++
++    move-result-object p1
++
++    invoke-virtual {p0, p1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    invoke-virtual {p0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object p0
++
++    invoke-static {v2, p0}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
++
++    return-void
++
++    :catchall_0
++    move-exception v0
++
++    :goto_0
++    move-object p0, v0
++
++    goto :goto_3
++
++    :catch_0
++    move-exception v0
++
++    :goto_1
++    move-object p0, v0
++
++    goto :goto_2
++
++    :catchall_1
++    move-exception v0
++
++    move v9, p2
++
++    goto :goto_0
++
++    :catch_1
++    move-exception v0
++
++    move v9, p2
++
++    goto :goto_1
++
++    :goto_2
++    :try_start_2
++    new-instance p1, Ljava/lang/StringBuilder;
++
++    invoke-direct {p1, v3}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
++
++    invoke-virtual {p1, v9}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
++
++    invoke-virtual {p1, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    invoke-static {v4}, Landroid/os/Debug;->getCallers(I)Ljava/lang/String;
++
++    move-result-object p2
++
++    invoke-virtual {p1, p2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    const-string p2, " ex="
++
++    invoke-virtual {p1, p2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    invoke-virtual {p1, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
++
++    invoke-virtual {p1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object p0
++
++    invoke-static {v2, p0}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;)I
++    :try_end_2
++    .catchall {:try_start_2 .. :try_end_2} :catchall_0
++
++    invoke-static {v9, v3, v1}, Landroidx/appcompat/widget/ListPopupWindow$$ExternalSyntheticOutline0;->m(ILjava/lang/String;Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    move-result-object p0
++
++    invoke-static {v4}, Landroid/os/Debug;->getCallers(I)Ljava/lang/String;
++
++    move-result-object p1
++
++    invoke-virtual {p0, p1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    invoke-virtual {p0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object p0
++
++    invoke-static {v2, p0}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
++
++    return-void
++
++    :goto_3
++    invoke-static {v9, v3, v1}, Landroidx/appcompat/widget/ListPopupWindow$$ExternalSyntheticOutline0;->m(ILjava/lang/String;Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    move-result-object p1
++
++    invoke-static {v4}, Landroid/os/Debug;->getCallers(I)Ljava/lang/String;
++
++    move-result-object p2
++
++    invoke-virtual {p1, p2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    invoke-virtual {p1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object p1
++
++    invoke-static {v2, p1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
++
++    throw p0
++.end method
++
++.method public static setSelectedScreenResolution(Landroid/content/Context;I)V
++    .locals 10
++
++    const-string v0, "SecDisplayUtils"
++
++    const-string v1, "getInitialDisplaySize() size : "
++
++    sget-object v2, Lcom/samsung/android/settings/Rune;->COMMON_CONFIG_PACKAGE_NAME_SMART_MANAGER:Ljava/lang/String;
++
++    new-instance v2, Landroid/graphics/Point;
++
++    invoke-direct {v2}, Landroid/graphics/Point;-><init>()V
++
++    :try_start_0
++    invoke-static {}, Landroid/view/WindowManagerGlobal;->getWindowManagerService()Landroid/view/IWindowManager;
++
++    move-result-object v3
++
++    const/4 v4, 0x0
++
++    invoke-interface {v3, v4, v2}, Landroid/view/IWindowManager;->getInitialDisplaySize(ILandroid/graphics/Point;)V
++
++    invoke-interface {v3, v4}, Landroid/view/IWindowManager;->getInitialDisplayDensity(I)I
++
++    move-result v3
++
++    new-instance v5, Ljava/lang/StringBuilder;
++
++    invoke-direct {v5, v1}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
++
++    invoke-virtual {v5, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
++
++    invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object v1
++
++    invoke-static {v0, v1}, Landroid/util/Log;->secD(Ljava/lang/String;Ljava/lang/String;)I
++    :try_end_0
++    .catch Landroid/os/RemoteException; {:try_start_0 .. :try_end_0} :catch_0
++
++    invoke-virtual {p0}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
++
++    move-result-object v1
++
++    const-string v5, "display_density_forced"
++
++    invoke-static {v1, v5, v3, v4}, Landroid/provider/Settings$Secure;->getIntForUser(Landroid/content/ContentResolver;Ljava/lang/String;II)I
++
++    move-result v1
++
++    new-instance v5, Ljava/lang/StringBuilder;
++
++    const-string v6, "currentDensity = "
++
++    invoke-direct {v5, v6}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
++
++    invoke-virtual {v5, v1}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
++
++    invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object v5
++
++    invoke-static {v0, v5}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
++
++    new-instance v5, Ljava/lang/StringBuilder;
++
++    const-string v6, "defaultDensity = "
++
++    invoke-direct {v5, v6}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
++
++    invoke-virtual {v5, v3}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
++
++    invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object v5
++
++    invoke-static {v0, v5}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
++
++    invoke-virtual {p0}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
++
++    move-result-object v5
++
++    const-string v6, "display_size_forced"
++
++    invoke-static {v5, v6}, Landroid/provider/Settings$Global;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
++
++    move-result-object v5
++
++    const/4 v6, 0x1
++
++    if-eqz v5, :cond_1
++
++    const-string v7, ""
++
++    invoke-virtual {v7, v5}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++
++    move-result v7
++
++    if-nez v7, :cond_1
++
++    const-string v7, ","
++
++    invoke-virtual {v5, v7}, Ljava/lang/String;->split(Ljava/lang/String;)[Ljava/lang/String;
++
++    move-result-object v5
++
++    if-eqz v5, :cond_0
++
++    array-length v7, v5
++
++    if-le v7, v6, :cond_0
++
++    aget-object v4, v5, v4
++
++    invoke-static {v4}, Ljava/lang/Integer;->parseInt(Ljava/lang/String;)I
++
++    move-result v4
++
++    goto :goto_0
++
++    :cond_0
++    iget v4, v2, Landroid/graphics/Point;->x:I
++
++    goto :goto_0
++
++    :cond_1
++    iget v4, v2, Landroid/graphics/Point;->x:I
++
++    :goto_0
++    new-instance v5, Ljava/lang/StringBuilder;
++
++    const-string v7, "currentWidth = "
++
++    invoke-direct {v5, v7}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
++
++    invoke-virtual {v5, v4}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
++
++    invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object v5
++
++    invoke-static {v0, v5}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
++
++    invoke-virtual {p0}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
++
++    move-result-object p0
++
++    const-string v5, "easy_mode_switch"
++
++    invoke-static {p0, v5, v6}, Landroid/provider/Settings$System;->getInt(Landroid/content/ContentResolver;Ljava/lang/String;I)I
++
++    move-result p0
++
++    if-nez p0, :cond_2
++
++    iget p0, v2, Landroid/graphics/Point;->x:I
++
++    int-to-float p0, p0
++
++    const/high16 v1, 0x44b40000    # 1440.0f
++
++    div-float/2addr p0, v1
++
++    const/high16 v1, 0x44340000    # 720.0f
++
++    mul-float/2addr p0, v1
++
++    float-to-int p0, p0
++
++    const-string v1, "easymode)defaultDensity = "
++
++    invoke-static {p0, v1, v0}, Landroidx/appcompat/widget/ListPopupWindow$$ExternalSyntheticOutline0;->m(ILjava/lang/String;Ljava/lang/String;)V
++
++    goto :goto_1
++
++    :cond_2
++    iget p0, v2, Landroid/graphics/Point;->x:I
++
++    int-to-float p0, p0
++
++    int-to-float v4, v4
++
++    div-float/2addr p0, v4
++
++    int-to-float v1, v1
++
++    mul-float/2addr p0, v1
++
++    float-to-int p0, p0
++
++    :goto_1
++    new-instance v1, Ljava/lang/StringBuilder;
++
++    const-string/jumbo v4, "setSelectedScreenResolution() density : "
++
++    invoke-direct {v1, v4}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
++
++    invoke-virtual {v1, p0}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
++
++    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object v1
++
++    invoke-static {v0, v1}, Landroid/util/Log;->secD(Ljava/lang/String;Ljava/lang/String;)I
++
++    iget v1, v2, Landroid/graphics/Point;->x:I
++
++    div-int/lit16 v1, v1, 0x168
++
++    const/4 v4, 0x2
++
++    if-eqz p1, :cond_5
++
++    if-eq p1, v6, :cond_4
++
++    if-eq p1, v4, :cond_3
++
++    move v4, v1
++
++    goto :goto_2
++
++    :cond_3
++    const/4 v4, 0x4
++
++    goto :goto_2
++
++    :cond_4
++    const/4 v4, 0x3
++
++    :cond_5
++    :goto_2
++    int-to-float p1, v4
++
++    int-to-float v5, v1
++
++    div-float/2addr p1, v5
++
++    new-instance v5, Ljava/lang/StringBuilder;
++
++    const-string v6, "basePx : "
++
++    invoke-direct {v5, v6}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
++
++    invoke-virtual {v5, v1}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
++
++    const-string v1, "   targetPx : "
++
++    invoke-virtual {v5, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    invoke-virtual {v5, v4}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
++
++    invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object v1
++
++    invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
++
++    new-instance v1, Ljava/lang/StringBuilder;
++
++    const-string v4, "convertRatio :  "
++
++    invoke-direct {v1, v4}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
++
++    invoke-virtual {v1, p1}, Ljava/lang/StringBuilder;->append(F)Ljava/lang/StringBuilder;
++
++    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object v1
++
++    invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
++
++    iget v1, v2, Landroid/graphics/Point;->x:I
++
++    int-to-double v4, v1
++
++    int-to-double v6, p0
++
++    const-wide/high16 v8, 0x4064000000000000L    # 160.0
++
++    div-double/2addr v6, v8
++
++    div-double/2addr v4, v6
++
++    double-to-int v1, v4
++
++    const/16 v4, 0x140
++
++    if-ge v1, v4, :cond_6
++
++    const-string/jumbo p0, "smallestWidth is less then 320!!!!! so set default smallestWidth value"
++
++    invoke-static {v0, p0}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
++
++    goto :goto_3
++
++    :cond_6
++    move v3, p0
++
++    :goto_3
++    iget p0, v2, Landroid/graphics/Point;->x:I
++
++    int-to-float p0, p0
++
++    mul-float/2addr p0, p1
++
++    float-to-int p0, p0
++
++    iget v1, v2, Landroid/graphics/Point;->y:I
++
++    int-to-float v1, v1
++
++    mul-float/2addr v1, p1
++
++    float-to-int v1, v1
++
++    int-to-float v2, v3
++
++    mul-float/2addr v2, p1
++
++    float-to-int p1, v2
++
++    const-string/jumbo v2, "set width : "
++
++    const-string v3, "  height : "
++
++    const-string v4, "  density : "
++
++    invoke-static {v2, v3, p0, v1, v4}, Landroidx/collection/MutableObjectList$$ExternalSyntheticOutline0;->m(Ljava/lang/String;Ljava/lang/String;IILjava/lang/String;)Ljava/lang/StringBuilder;
++
++    move-result-object v2
++
++    invoke-virtual {v2, p1}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
++
++    const-string v3, "  setDefault : true"
++
++    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object v2
++
++    invoke-static {v0, v2}, Landroid/util/Log;->secD(Ljava/lang/String;Ljava/lang/String;)I
++
++    if-lez p0, :cond_8
++
++    if-lez v1, :cond_8
++
++    if-gtz p1, :cond_7
++
++    goto :goto_4
++
++    :cond_7
++    invoke-static {p0, v1, p1}, Lcom/samsung/android/settings/display/SecDisplayUtils;->applyForcedDisplayDensity(III)V
++
++    :cond_8
++    :goto_4
++    return-void
++
++    :catch_0
++    const-string p0, "getInitialDisplaySize() exception!!!"
++
++    invoke-static {v0, p0}, Landroid/util/Log;->secD(Ljava/lang/String;Ljava/lang/String;)I
++
++    return-void
++.end method
++
+ .method static constructor <clinit>()V
+     .locals 3
+ 
+     const-string v0, "ro.product.device"
+ 
+diff --git a/smali_classes3/com/samsung/android/settings/display/ScreenResolutionFragment$2.smali b/smali_classes3/com/samsung/android/settings/display/ScreenResolutionFragment$2.smali
+--- a/smali_classes3/com/samsung/android/settings/display/ScreenResolutionFragment$2.smali
++++ b/smali_classes3/com/samsung/android/settings/display/ScreenResolutionFragment$2.smali
+@@ -233,18 +233,10 @@
+     invoke-virtual {v0}, Landroid/app/AlertDialog$Builder;->show()Landroid/app/AlertDialog;
+ 
+     return-void
+ 
+     :cond_4
+-    invoke-static {p1}, Ljava/lang/Integer;->toString(I)Ljava/lang/String;
+-
+-    move-result-object v0
+-
+-    sget-object v1, Lcom/samsung/android/settings/display/ScreenResolutionFragment;->mDisplay:Landroid/view/Display;
+-
+-    invoke-static {v0, v1}, Lcom/samsung/android/settings/display/SecDisplayUtils;->setDisplayMode(Ljava/lang/String;Landroid/view/Display;)V
+-
+     iget-object v0, p0, Lcom/samsung/android/settings/display/ScreenResolutionFragment$2;->this$0:Lcom/samsung/android/settings/display/ScreenResolutionFragment;
+ 
+     iget-object v0, v0, Lcom/samsung/android/settings/display/ScreenResolutionFragment;->mController:Lcom/samsung/android/settings/display/controller/SecScreenResolutionSingleChoiceController;
+ 
+     invoke-static {p1}, Ljava/lang/Integer;->toString(I)Ljava/lang/String;
+diff --git a/smali_classes3/com/samsung/android/settings/display/ScreenResolutionFragment$2$2.smali b/smali_classes3/com/samsung/android/settings/display/ScreenResolutionFragment$2$2.smali
+--- a/smali_classes3/com/samsung/android/settings/display/ScreenResolutionFragment$2$2.smali
++++ b/smali_classes3/com/samsung/android/settings/display/ScreenResolutionFragment$2$2.smali
+@@ -13,20 +13,10 @@
+ 
+ 
+ # virtual methods
+ .method public final onClick(Landroid/content/DialogInterface;I)V
+     .locals 1
+-
+-    iget p1, p0, Lcom/samsung/android/settings/display/ScreenResolutionFragment$2$2;->val$selected:I
+-
+-    invoke-static {p1}, Ljava/lang/Integer;->toString(I)Ljava/lang/String;
+-
+-    move-result-object p1
+-
+-    sget-object p2, Lcom/samsung/android/settings/display/ScreenResolutionFragment;->mDisplay:Landroid/view/Display;
+-
+-    invoke-static {p1, p2}, Lcom/samsung/android/settings/display/SecDisplayUtils;->setDisplayMode(Ljava/lang/String;Landroid/view/Display;)V
+ 
+     iget-object p1, p0, Lcom/samsung/android/settings/display/ScreenResolutionFragment$2$2;->this$1:Lcom/samsung/android/settings/display/ScreenResolutionFragment$2;
+ 
+     iget-object p1, p1, Lcom/samsung/android/settings/display/ScreenResolutionFragment$2;->this$0:Lcom/samsung/android/settings/display/ScreenResolutionFragment;
+ 
+diff --git a/smali_classes3/com/samsung/android/settings/display/ScreenResolutionFragment.smali b/smali_classes3/com/samsung/android/settings/display/ScreenResolutionFragment.smali
+--- a/smali_classes3/com/samsung/android/settings/display/ScreenResolutionFragment.smali
++++ b/smali_classes3/com/samsung/android/settings/display/ScreenResolutionFragment.smali
+@@ -360,11 +360,19 @@
+ 
+     iput-object v1, p0, Lcom/samsung/android/settings/display/ScreenResolutionFragment;->mScreenResolutionButton:Lcom/samsung/android/settings/widget/SecHorizontalRadioPreference;
+ 
+     sget-object v1, Lcom/samsung/android/settings/Rune;->COMMON_CONFIG_PACKAGE_NAME_SMART_MANAGER:Ljava/lang/String;
+ 
+-    invoke-virtual {p0, p1}, Lcom/android/settings/SettingsPreferenceFragment;->removePreference(Ljava/lang/String;)Z
++    iget p1, p0, Lcom/samsung/android/settings/display/ScreenResolutionFragment;->mScreenResolution:I
++
++    invoke-static {p1}, Ljava/lang/Integer;->toString(I)Ljava/lang/String;
++
++    move-result-object p1
++
++    iget-object v1, p0, Lcom/samsung/android/settings/display/ScreenResolutionFragment;->mScreenResolutionButton:Lcom/samsung/android/settings/widget/SecHorizontalRadioPreference;
++
++    invoke-virtual {v1, p1}, Lcom/samsung/android/settings/widget/SecHorizontalRadioPreference;->setValue(Ljava/lang/String;)V
+ 
+     new-instance p1, Landroid/graphics/Point;
+ 
+     invoke-direct {p1}, Landroid/graphics/Point;-><init>()V
+ 
+@@ -560,12 +568,35 @@
+ 
+     :cond_3
+     move v2, p1
+ 
+     :goto_2
+-    iget p1, p0, Lcom/samsung/android/settings/display/ScreenResolutionFragment;->mScreenResolution:I
+-
++    invoke-static {v2, v6}, Ljava/lang/Math;->min(II)I
++
++    move-result p1
++
++    const/16 v4, 0x5a0
++
++    if-lt p1, v4, :resolution_initial_fhd
++
++    const/4 p1, 0x2
++
++    goto :resolution_initial_ready
++
++    :resolution_initial_fhd
++    const/16 v4, 0x2d0
++
++    if-le p1, v4, :resolution_initial_hd
++
++    const/4 p1, 0x1
++
++    goto :resolution_initial_ready
++
++    :resolution_initial_hd
++    const/4 p1, 0x0
++
++    :resolution_initial_ready
+     const/4 v3, 0x2
+ 
+     if-eq p1, v1, :cond_5
+ 
+     if-eq p1, v3, :cond_4
+diff --git a/smali/com/android/settings/DisplaySettings$4.smali b/smali/com/android/settings/DisplaySettings$4.smali
+--- a/smali/com/android/settings/DisplaySettings$4.smali
++++ b/smali/com/android/settings/DisplaySettings$4.smali
+@@ -336,17 +336,11 @@
+     :cond_d
+     const-string v2, "resetDisplaySizeSettings() Clear Resolution"
+ 
+     invoke-static {v10, v2}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+ 
+-    invoke-static {v9}, Ljava/lang/Integer;->toString(I)Ljava/lang/String;
+-
+-    move-result-object v2
+-
+-    sget-object v3, Lcom/android/settings/DisplaySettings;->mDisplay:Landroid/view/Display;
+-
+-    invoke-static {v2, v3}, Lcom/samsung/android/settings/display/SecDisplayUtils;->setDisplayMode(Ljava/lang/String;Landroid/view/Display;)V
++    invoke-static {v0, v9}, Lcom/samsung/android/settings/display/SecDisplayUtils;->setSelectedScreenResolution(Landroid/content/Context;I)V
+ 
+     :goto_7
+     if-nez v7, :cond_e
+ 
+     invoke-interface {v14}, Landroid/view/IWindowManager;->isSafeModeEnabled()Z
+diff --git a/smali_classes3/com/samsung/android/settings/eternal/provider/items/DisplayItem.smali b/smali_classes3/com/samsung/android/settings/eternal/provider/items/DisplayItem.smali
+--- a/smali_classes3/com/samsung/android/settings/eternal/provider/items/DisplayItem.smali
++++ b/smali_classes3/com/samsung/android/settings/eternal/provider/items/DisplayItem.smali
+@@ -5,10 +5,90 @@
+ # interfaces
+ .implements Lcom/samsung/android/settings/eternal/provider/items/Recoverable;
+ 
+ 
+ # direct methods
++.method public static isSameDeviceType(Ljava/lang/String;)Z
++    .locals 3
++
++    const-string/jumbo v0, "ro.build.characteristics"
++
++    invoke-static {v0}, Landroid/os/SystemProperties;->get(Ljava/lang/String;)Ljava/lang/String;
++
++    move-result-object v0
++
++    if-eqz v0, :cond_0
++
++    const-string/jumbo v1, "tablet"
++
++    invoke-virtual {v0, v1}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
++
++    move-result v2
++
++    if-eqz v2, :cond_0
++
++    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++
++    move-result v1
++
++    if-eqz v1, :cond_0
++
++    goto :goto_0
++
++    :cond_0
++    const-string/jumbo v1, "phone"
++
++    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++
++    move-result v1
++
++    if-nez v1, :cond_2
++
++    const-string v1, "nosdcard"
++
++    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++
++    move-result v1
++
++    if-eqz v1, :cond_1
++
++    goto :goto_0
++
++    :cond_1
++    new-instance v1, Ljava/lang/StringBuilder;
++
++    const-string v2, "Device type is not same! backupDeviceType = "
++
++    invoke-direct {v1, v2}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
++
++    invoke-virtual {v1, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    const-string p0, " characteristics = "
++
++    invoke-virtual {v1, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    invoke-virtual {v1, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
++
++    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
++
++    move-result-object p0
++
++    const-string v0, "Eternal/DisplayItem"
++
++    invoke-static {v0, p0}, Lcom/samsung/android/util/SemLog;->d(Ljava/lang/String;Ljava/lang/String;)I
++
++    const/4 p0, 0x0
++
++    return p0
++
++    :cond_2
++    :goto_0
++    const/4 p0, 0x1
++
++    return p0
++.end method
++
+ .method public static getFontFileName(Landroid/content/Context;)Ljava/lang/String;
+     .locals 3
+ 
+     const/4 v0, 0x1
+ 
+@@ -1050,19 +1130,23 @@
+     invoke-virtual {v3, v0}, Lcom/samsung/android/lib/episode/Scene$Builder;->setValue(Ljava/lang/Object;)Lcom/samsung/android/lib/episode/Scene$Builder;
+ 
+     return-object v3
+ 
+     :pswitch_2
+-    sget-object v0, Lcom/samsung/android/settings/Rune;->COMMON_CONFIG_PACKAGE_NAME_SMART_MANAGER:Ljava/lang/String;
+-
+-    const-string v0, "Device not support ScreenResolution - "
+-
+-    invoke-virtual {v0, v2}, Ljava/lang/String;->concat(Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object v0
+-
+-    invoke-static {v12, v0}, Lcom/samsung/android/util/SemLog;->d(Ljava/lang/String;Ljava/lang/String;)I
++    invoke-static {v0}, Lcom/samsung/android/settings/display/SecDisplayUtils;->getScreenResolution(Landroid/content/Context;)I
++
++    move-result v0
++
++    invoke-static {v0}, Ljava/lang/String;->valueOf(I)Ljava/lang/String;
++
++    move-result-object v0
++
++    const/4 v1, 0x0
++
++    invoke-virtual {v3, v0, v1}, Lcom/samsung/android/lib/episode/Scene$Builder;->setValue(Ljava/lang/Object;Z)Lcom/samsung/android/lib/episode/Scene$Builder;
++
++    invoke-virtual {v3, v1}, Lcom/samsung/android/lib/episode/Scene$Builder;->setDefault(Z)Lcom/samsung/android/lib/episode/Scene$Builder;
+ 
+     return-object v3
+ 
+     :pswitch_3
+     invoke-static {v0}, Lcom/samsung/android/settings/Rune;->supportPocketMode(Landroid/content/Context;)Z
+@@ -4843,12 +4927,27 @@
+     invoke-static {v4, v5, v1}, Lcom/samsung/android/settings/asbase/vibration/SecSoundDeviceVibrationController$$ExternalSyntheticOutline0;->m(Landroid/content/ContentResolver;Ljava/lang/String;Ljava/lang/String;)V
+ 
+     goto/16 :goto_30
+ 
+     :pswitch_2
+-    sget-object v0, Lcom/samsung/android/settings/Rune;->COMMON_CONFIG_PACKAGE_NAME_SMART_MANAGER:Ljava/lang/String;
+-
++    invoke-static {v7}, Lcom/samsung/android/settings/eternal/provider/items/DisplayItem;->isSameDeviceType(Ljava/lang/String;)Z
++
++    move-result v0
++
++    if-eqz v0, :resolution_restore_unsupported
++
++    sget-object v0, Lcom/samsung/android/lib/episode/SceneResult$ResultType;->RESULT_FAIL:Lcom/samsung/android/lib/episode/SceneResult$ResultType;
++
++    invoke-virtual {v8, v0}, Lcom/samsung/android/lib/episode/SceneResult$Builder;->setResult(Lcom/samsung/android/lib/episode/SceneResult$ResultType;)Lcom/samsung/android/lib/episode/SceneResult$Builder;
++
++    sget-object v0, Lcom/samsung/android/lib/episode/SceneResult$ErrorType;->TEMPORARY_BLOCK:Lcom/samsung/android/lib/episode/SceneResult$ErrorType;
++
++    invoke-virtual {v8, v0}, Lcom/samsung/android/lib/episode/SceneResult$Builder;->setErrorType(Lcom/samsung/android/lib/episode/SceneResult$ErrorType;)Lcom/samsung/android/lib/episode/SceneResult$Builder;
++
++    goto/16 :goto_30
++
++    :resolution_restore_unsupported
+     sget-object v0, Lcom/samsung/android/lib/episode/SceneResult$ResultType;->RESULT_FAIL:Lcom/samsung/android/lib/episode/SceneResult$ResultType;
+ 
+     invoke-virtual {v8, v0}, Lcom/samsung/android/lib/episode/SceneResult$Builder;->setResult(Lcom/samsung/android/lib/episode/SceneResult$ResultType;)Lcom/samsung/android/lib/episode/SceneResult$Builder;
+ 
+     move-result-object v0
+diff --git a/smali/com/android/settings/Utils.smali b/smali/com/android/settings/Utils.smali
+--- a/smali/com/android/settings/Utils.smali
++++ b/smali/com/android/settings/Utils.smali
+@@ -5512,11 +5512,15 @@
+ 
+     if-ne v4, v6, :cond_2
+ 
+     if-nez v0, :cond_2
+ 
+-    invoke-static {}, Lcom/android/settings/Utils;->isGameModeEnabled()V
++    invoke-static {p0}, Lcom/android/settings/Utils;->isGameModeEnabled(Landroid/content/Context;)Z
++
++    move-result v4
++
++    if-nez v4, :cond_2
+ 
+     if-nez v3, :cond_2
+ 
+     return v2
+ 
+@@ -5663,10 +5667,59 @@
+ 
+     :cond_0
+     const/4 p0, 0x0
+ 
+     return p0
++.end method
++
++.method public static isGameModeEnabled(Landroid/content/Context;)Z
++    .locals 3
++
++    const/4 v0, 0x0
++
++    invoke-static {}, Lcom/samsung/android/feature/SemFloatingFeature;->getInstance()Lcom/samsung/android/feature/SemFloatingFeature;
++
++    move-result-object v1
++
++    const-string v2, "SEC_FLOATING_FEATURE_COMMON_SUPPORT_HIGH_PERFORMANCE_MODE"
++
++    invoke-virtual {v1, v2}, Lcom/samsung/android/feature/SemFloatingFeature;->getBoolean(Ljava/lang/String;)Z
++
++    move-result v2
++
++    if-eqz v2, :resolution_game_done
++
++    const-string v2, "SEC_FLOATING_FEATURE_COMMON_CONFIG_DYN_RESOLUTION_CONTROL"
++
++    invoke-virtual {v1, v2}, Lcom/samsung/android/feature/SemFloatingFeature;->getString(Ljava/lang/String;)Ljava/lang/String;
++
++    move-result-object v1
++
++    invoke-virtual {v1}, Ljava/lang/String;->isEmpty()Z
++
++    move-result v1
++
++    if-nez v1, :resolution_game_done
++
++    invoke-virtual {p0}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
++
++    move-result-object p0
++
++    const-string v1, "sem_perfomance_mode"
++
++    invoke-static {p0, v1, v0}, Landroid/provider/Settings$Secure;->getInt(Landroid/content/ContentResolver;Ljava/lang/String;I)I
++
++    move-result p0
++
++    const/4 v1, 0x1
++
++    if-ne p0, v1, :resolution_game_done
++
++    move v0, v1
++
++    :resolution_game_done
++    return v0
+ .end method
+ 
+ .method public static isGameModeEnabled()V
+     .locals 4
+ 
+diff --git a/smali_classes3/com/samsung/android/settings/display/controller/EasyModePreferenceController.smali b/smali_classes3/com/samsung/android/settings/display/controller/EasyModePreferenceController.smali
+--- a/smali_classes3/com/samsung/android/settings/display/controller/EasyModePreferenceController.smali
++++ b/smali_classes3/com/samsung/android/settings/display/controller/EasyModePreferenceController.smali
+@@ -127,11 +127,45 @@
+     invoke-virtual {p1, v0}, Lcom/samsung/android/settings/display/DisplayDisabledAppearancePreference;->setEnabledAppearance(Z)V
+ 
+     goto :goto_0
+ 
+     :cond_0
+-    invoke-static {}, Lcom/android/settings/Utils;->isGameModeEnabled()V
++    iget-object p1, p0, Lcom/android/settingslib/core/AbstractPreferenceController;->mContext:Landroid/content/Context;
++
++    invoke-static {p1}, Lcom/android/settings/Utils;->isGameModeEnabled(Landroid/content/Context;)Z
++
++    move-result p1
++
++    if-eqz p1, :resolution_not_game
++
++    iget-object v2, p0, Lcom/samsung/android/settings/display/controller/EasyModePreferenceController;->mPreference:Lcom/samsung/android/settings/display/DisplayDisabledAppearancePreference;
++
++    iget-object p1, p0, Lcom/android/settingslib/core/AbstractPreferenceController;->mContext:Landroid/content/Context;
++
++    const v1, 0x7f1509f2
++
++    invoke-virtual {p1, v1}, Landroid/content/Context;->getString(I)Ljava/lang/String;
++
++    move-result-object v1
++
++    filled-new-array {v1}, [Ljava/lang/Object;
++
++    move-result-object v1
++
++    const v3, 0x7f1526ed
++
++    invoke-virtual {p1, v3, v1}, Landroid/content/Context;->getString(I[Ljava/lang/Object;)Ljava/lang/String;
++
++    move-result-object p1
++
++    iput-object p1, v2, Lcom/samsung/android/settings/display/DisplayDisabledAppearancePreference;->mMsg:Ljava/lang/String;
++
++    invoke-virtual {v2, v0}, Lcom/samsung/android/settings/display/DisplayDisabledAppearancePreference;->setEnabledAppearance(Z)V
++
++    goto :goto_0
++
++    :resolution_not_game
+ 
+     iget-object p1, p0, Lcom/android/settingslib/core/AbstractPreferenceController;->mContext:Landroid/content/Context;
+ 
+     invoke-static {p1}, Lcom/android/settings/Utils;->isDesktopWindowing(Landroid/content/Context;)Z
+ 
+
+

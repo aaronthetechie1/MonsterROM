@@ -1,0 +1,21 @@
+Subject: [PATCH] Enable SDK37 game display resolution tracking
+
+The display listener moved out of GameManagerService. Preserve its current
+constructor and callbacks, enabling only the existing resolution tracker.
+
+diff --git a/smali/com/samsung/android/game/display/GameDisplayListener.smali b/smali/com/samsung/android/game/display/GameDisplayListener.smali
+--- a/smali/com/samsung/android/game/display/GameDisplayListener.smali
++++ b/smali/com/samsung/android/game/display/GameDisplayListener.smali
+@@ -44,11 +44,9 @@
+ 
+     const-string v0, "WQHD,FHD,HD"
+ 
+-    const-string v1, ""
+-
+-    invoke-virtual {v0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++    invoke-virtual {v0, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+ 
+     move-result v0
+ 
+     iput-boolean v0, p0, Lcom/samsung/android/game/display/GameDisplayListener;->MULTI_RESOLUTION_SUPPORTED:Z
+

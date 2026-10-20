@@ -1,0 +1,50 @@
+Subject: [PATCH] Keep legacy screen-zoom previews proportional on SDK 37
+
+Use the original HD/FHD/WQHD conversion ratios while retaining the current
+preview, font, DeX and inset implementation and its constant font scale.
+
+diff --git a/smali_classes3/com/samsung/android/settings/display/SecScreenZoomPreferenceFragment.smali b/smali_classes3/com/samsung/android/settings/display/SecScreenZoomPreferenceFragment.smali
+--- a/smali_classes3/com/samsung/android/settings/display/SecScreenZoomPreferenceFragment.smali
++++ b/smali_classes3/com/samsung/android/settings/display/SecScreenZoomPreferenceFragment.smali
+@@ -75,3 +75,28 @@
+ 
+ # direct methods
++.method private static getLegacyResolutionRatio(Landroid/content/Context;)F
++    .locals 2
++
++    invoke-static {p0}, Lcom/samsung/android/settings/display/SecDisplayUtils;->getScreenResolution(Landroid/content/Context;)I
++
++    move-result p0
++
++    const/4 v0, 0x0
++
++    const/high16 v1, 0x3f000000    # 0.5f
++
++    if-eq p0, v0, :unica_resolution_ratio
++
++    const/4 v0, 0x1
++
++    const/high16 v1, 0x3f400000    # 0.75f
++
++    if-eq p0, v0, :unica_resolution_ratio
++
++    const/high16 v1, 0x3f800000    # 1.0f
++
++    :unica_resolution_ratio
++    return v1
++.end method
++
+ .method static constructor <clinit>()V
+@@ -880,5 +880,11 @@
+     const/high16 v2, 0x3f800000    # 1.0f
+ 
+-    iput v2, v0, Lcom/samsung/android/settings/display/SecScreenZoomPreferenceFragment;->mConvertRatio:F
++    iget-object v12, v0, Lcom/samsung/android/settings/display/SecScreenZoomPreferenceFragment;->mContext:Landroid/content/Context;
++
++    invoke-static {v12}, Lcom/samsung/android/settings/display/SecScreenZoomPreferenceFragment;->getLegacyResolutionRatio(Landroid/content/Context;)F
++
++    move-result v12
++
++    iput v12, v0, Lcom/samsung/android/settings/display/SecScreenZoomPreferenceFragment;->mConvertRatio:F
+ 
+     iget-boolean v12, v0, Lcom/samsung/android/settings/display/SecScreenZoomPreferenceFragment;->mDexMode:Z

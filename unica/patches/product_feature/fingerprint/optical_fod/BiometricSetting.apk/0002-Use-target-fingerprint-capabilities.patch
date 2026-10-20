@@ -1,0 +1,33 @@
+Subject: [PATCH] Select the native optical UI from target capabilities
+
+Keep the SDK-37 donor app and its optical implementation. Do not report
+an ultrasonic sensor simultaneously on an optical target.
+
+diff --git a/smali/com/samsung/android/biometrics/app/setting/Utils$Config.smali b/smali/com/samsung/android/biometrics/app/setting/Utils$Config.smali
+--- a/smali/com/samsung/android/biometrics/app/setting/Utils$Config.smali
++++ b/smali/com/samsung/android/biometrics/app/setting/Utils$Config.smali
+@@ -136,17 +136,23 @@
+     const-string v6, "SEC_FLOATING_FEATURE_BIOAUTH_CONFIG_FINGERPRINT_FEATURES"
+ 
+     invoke-virtual {v4, v6}, Lcom/samsung/android/feature/SemFloatingFeature;->getString(Ljava/lang/String;)Ljava/lang/String;
+ 
+     move-result-object v4
+ 
+     sput-boolean v2, Lcom/samsung/android/biometrics/app/setting/Utils$Config;->FP_FEATURE_SENSOR_IS_IN_DISPLAY_TYPE:Z
+ 
+-    sput-boolean v2, Lcom/samsung/android/biometrics/app/setting/Utils$Config;->FP_FEATURE_SENSOR_IS_ULTRASONIC:Z
++    const-string v6, "ultrasonic"
++
++    invoke-virtual {v4, v6}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
++
++    move-result v6
++
++    sput-boolean v6, Lcom/samsung/android/biometrics/app/setting/Utils$Config;->FP_FEATURE_SENSOR_IS_ULTRASONIC:Z
+ 
+     const-string v6, "optical"
+ 
+     invoke-virtual {v4, v6}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+ 
+     move-result v6
+ 
+     sput-boolean v6, Lcom/samsung/android/biometrics/app/setting/Utils$Config;->FP_FEATURE_SENSOR_IS_OPTICAL:Z

@@ -1,0 +1,95 @@
+From 22c5035dd21f28258f813fd22d50e86f8ee0ccfe Mon Sep 17 00:00:00 2001
+From: ditternation <ditternation@outlook.com>
+Date: Wed, 30 Sep 2026 17:27:38 +0200
+Subject: [PATCH] Disable 80211AX_6GHZ support
+
+---
+ .../server/wifi/SemFrameworkFacade.smali      |  2 +-
+ .../server/wifi/SemWifiCoexManager.smali      | 31 +------------------
+ .../wifi/b2b/WifiB2bPolicyManager.smali       | 12 ++++++-
+ 3 files changed, 13 insertions(+), 32 deletions(-)
+
+diff --git a/smali/com/samsung/android/server/wifi/SemFrameworkFacade.smali b/smali/com/samsung/android/server/wifi/SemFrameworkFacade.smali
+index f6cc885..80ec459 100644
+--- a/smali/com/samsung/android/server/wifi/SemFrameworkFacade.smali
++++ b/smali/com/samsung/android/server/wifi/SemFrameworkFacade.smali
+@@ -1519,7 +1519,7 @@
+ .method public isSupported6Ghz()Z
+     .locals 0
+ 
+-    const/4 p0, 0x1
++    const/4 p0, 0x0
+ 
+     return p0
+ .end method
+diff --git a/smali/com/samsung/android/server/wifi/SemWifiCoexManager.smali b/smali/com/samsung/android/server/wifi/SemWifiCoexManager.smali
+index 347e085..09eacd2 100644
+--- a/smali/com/samsung/android/server/wifi/SemWifiCoexManager.smali
++++ b/smali/com/samsung/android/server/wifi/SemWifiCoexManager.smali
+@@ -1823,37 +1823,8 @@
+ .end method
+ 
+ .method public getWifiUwbCoexMode()Ljava/lang/String;
+-    .locals 2
+-
+-    iget-object v0, p0, Lcom/samsung/android/server/wifi/SemWifiCoexManager;->mWifiManagerProxy:Lcom/samsung/android/server/wifi/SemWifiManagerProxy;
+-
+-    invoke-virtual {v0}, Lcom/samsung/android/server/wifi/SemWifiManagerProxy;->isWifiEnabled()Z
+-
+-    move-result v0
+-
+-    if-eqz v0, :cond_0
+-
+-    iget-object p0, p0, Lcom/samsung/android/server/wifi/SemWifiCoexManager;->mWifiNative:Lcom/samsung/android/server/wifi/halclient/SemWifiNative;
+-
+-    const-string v0, "wlan0"
+-
+-    invoke-virtual {p0, v0}, Lcom/samsung/android/server/wifi/halclient/SemWifiNative;->getWifiUwbCoexMode(Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object p0
+-
+-    const-string v0, "getWifiUwbCoexMode - return str = "
+-
+-    invoke-static {v0, p0}, Lcom/samsung/android/server/wifi/ByteUtil$$ExternalSyntheticOutline0;->m(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object v0
+-
+-    const-string v1, "SemWifiCoexManager"
+-
+-    invoke-static {v1, v0}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+-
+-    return-object p0
+-
+-    :cond_0
++    .locals 0
++
+     const-string p0, ""
+ 
+     return-object p0
+diff --git a/smali/com/samsung/android/server/wifi/b2b/WifiB2bPolicyManager.smali b/smali/com/samsung/android/server/wifi/b2b/WifiB2bPolicyManager.smali
+index a04b70f..8a0bd38 100644
+--- a/smali/com/samsung/android/server/wifi/b2b/WifiB2bPolicyManager.smali
++++ b/smali/com/samsung/android/server/wifi/b2b/WifiB2bPolicyManager.smali
+@@ -193,9 +193,19 @@
+ 
+     iput p1, p0, Lcom/samsung/android/server/wifi/b2b/WifiB2bPolicyManager;->supportedBand:I
+ 
++    iget p2, p0, Lcom/samsung/android/server/wifi/b2b/WifiB2bPolicyManager;->setbandDefaultValue:I
++
++    if-gt p1, p2, :cond_compat_band
++
++    const/4 p1, 0x0
++
++    iput p1, p0, Lcom/samsung/android/server/wifi/b2b/WifiB2bPolicyManager;->setbandDefaultValue:I
++
++    :cond_compat_band
++
+     new-instance p1, Ljava/lang/StringBuilder;
+ 
+-    const-string p2, "value of 6ghz secproduct feature :true  setbandDefaultValue "
++    const-string p2, "value of 6ghz secproduct feature :false  setbandDefaultValue "
+ 
+     invoke-direct {p1, p2}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
+ 
+-- 
+2.53.0

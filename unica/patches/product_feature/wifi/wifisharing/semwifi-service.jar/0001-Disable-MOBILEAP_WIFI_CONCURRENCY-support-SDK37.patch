@@ -1,0 +1,22 @@
+From: UN1CA <unica@localhost>
+Subject: [PATCH] Remove the SDK37 forced mobile-AP concurrency override
+
+Inverse of the original MOBILEAP_WIFI_CONCURRENCY enable patch: let the
+vendor chip capabilities choose Wi-Fi sharing and Lite mode instead of
+forcing concurrent sharing on. Preserve power-save support and interface
+selection. The module also changes the SPF_Concurrency diagnostic to false.
+---
+diff --git a/smali/com/samsung/android/server/wifi/ap/SemWifiApChipInfo.smali b/smali/com/samsung/android/server/wifi/ap/SemWifiApChipInfo.smali
+--- a/smali/com/samsung/android/server/wifi/ap/SemWifiApChipInfo.smali
++++ b/smali/com/samsung/android/server/wifi/ap/SemWifiApChipInfo.smali
+@@ -665,10 +665,8 @@
+     :cond_3
+     :goto_0
+-    sput-boolean v5, Lcom/samsung/android/server/wifi/ap/SemWifiApChipInfo;->mSupportWifiSharing:Z
+-
+     new-instance v2, Ljava/lang/StringBuilder;
+ 
+     const-string v3, "Support power save mode, SEC_PRODUCT_FEATURE_WLAN_SUPPORT_MOBILEAP_POWER_SAVEMODE : true SoftAp_PowerSave : "
+ 
+     invoke-direct {v2, v3}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
+ 
