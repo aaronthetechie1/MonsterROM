@@ -521,6 +521,38 @@ source "$SRC_DIR/platform/exynos2100/patches/blobs/customize.sh"
                 with self.subTest(patch=str(path)):
                     self.assertTrue(path.is_file())
 
+    def test_selinux_cleanup_uses_the_selected_system_ext_layout(self):
+        for separate in (True, False):
+            with self.subTest(separate=separate), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                system_ext = root / ("system_ext" if separate else "system/system/system_ext") / "etc/selinux"
+                vendor = root / "vendor/etc/selinux"
+                platform = root / "system/system/etc/selinux"
+                for path in (system_ext / "mapping", vendor, platform):
+                    path.mkdir(parents=True, exist_ok=True)
+                mapping = system_ext / "mapping/30.0.cil"
+                mapping.write_text('(typeattributeset heatmap_default_30_0 (heatmap_default))\n'
+                                   '(typeattributeset keep_30_0 (keep))\n')
+                contexts = system_ext / "system_ext_property_contexts"
+                contexts.write_text('init.svc.vendor.wvkprov_server_hal u:object_r:vendor_default_prop:s0 exact string\n')
+                (system_ext / "system_ext_sepolicy.cil").write_text(
+                    '(genfscon sysfs /heatmap (u object_r heatmap_default ((s0) (s0))))\n')
+                (platform / "plat_sepolicy.cil").write_text('')
+                (vendor / "plat_sepolicy_vers.txt").write_text('30.0\n')
+                (vendor / "plat_pub_versioned.cil").write_text('')
+                vendor_contexts = vendor / "vendor_property_contexts"
+                vendor_contexts.write_text(contexts.read_text())
+                result = run_bash('''
+source "$SRC_DIR/scripts/utils/module_utils.sh"
+source "$SRC_DIR/unica/patches/selinux/customize.sh"
+''', root, SOURCE_PLATFORM_SDK_VERSION=36,
+                    TARGET_OS_BUILD_SYSTEM_EXT_PARTITION=str(separate).lower())
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("No such file", result.stderr)
+                self.assertNotIn("heatmap_default", mapping.read_text())
+                self.assertIn("keep_30_0", mapping.read_text())
+                self.assertTrue(vendor_contexts.read_text().startswith("#SEC_DUPLICATE:"))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
