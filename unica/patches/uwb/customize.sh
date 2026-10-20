@@ -6,15 +6,12 @@ TARGET_HAS_UWB="$(test -f "$FW_DIR/$TARGET_FIRMWARE_PATH/vendor/etc/permissions/
 
 if ! $SOURCE_HAS_UWB; then
     if $TARGET_HAS_UWB; then
-        LOG "- Adding \"ro.boot.uwbcountrycode\" prop with \"ff\" in /product/etc/build.prop"
-        EVAL "sed -i \"/usb.config/a ro.boot.uwbcountrycode=ff\" \"$WORK_DIR/product/etc/build.prop\""
+        SET_PROP "product" "ro.boot.uwbcountrycode" "ff"
 
         ADD_TO_WORK_DIR "b0qxxx" "product" \
             "overlay/UwbRROverlay.apk" 0 0 644 "u:object_r:system_file:s0"
         ADD_TO_WORK_DIR "b0qxxx" "system" \
             "system/app/UwbTest/UwbTest.apk" 0 0 644 "u:object_r:system_file:s0"
-        ADD_TO_WORK_DIR "$([[ "$TARGET_OS_SINGLE_SYSTEM_IMAGE" == "qssi" ]] && echo "b0qxxx" || echo "b0sxxx")" \
-            "system" "system/etc/classpaths/bootclasspath.pb" 0 0 644 "u:object_r:system_file:s0"
         ADD_TO_WORK_DIR "b0qxxx" "system" \
             "system/etc/init/init.system.uwb.rc" 0 0 644 "u:object_r:system_file:s0"
         ADD_TO_WORK_DIR "b0qxxx" "system" \
@@ -31,6 +28,21 @@ if ! $SOURCE_HAS_UWB; then
             "system/etc/pp_model.tflite" 0 0 644 "u:object_r:system_file:s0"
         ADD_TO_WORK_DIR "b0qxxx" "system" \
             "system/framework/com.samsung.android.uwb_extras.jar" 0 0 644 "u:object_r:system_file:s0"
+        # Only the Samsung extras belong on the boot classpath. In particular,
+        # do not replace Android 17's framework list with the Android 16 list.
+        UWB_CLASSPATH_REFERENCE="$SRC_DIR/prebuilts/samsung/$([[ "$TARGET_OS_SINGLE_SYSTEM_IMAGE" == "qssi" ]] && echo "b0qxxx" || echo "b0sxxx")/system/etc/classpaths/bootclasspath.pb"
+        # Repair work directories produced by the old whole-file import, only
+        # when their descriptor is still byte-for-byte that known prebuilt.
+        if [[ "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]] && cmp -s \
+                "$WORK_DIR/system/system/etc/classpaths/bootclasspath.pb" "$UWB_CLASSPATH_REFERENCE"; then
+            ADD_TO_WORK_DIR "$SOURCE_FIRMWARE" "system" \
+                "system/etc/classpaths/bootclasspath.pb" 0 0 644 "u:object_r:system_file:s0"
+        fi
+        python3 "$SRC_DIR/scripts/utils/classpaths_utils.py" \
+            --work-dir "$WORK_DIR" --reference "$UWB_CLASSPATH_REFERENCE" \
+            --jar /system/framework/com.samsung.android.uwb_extras.jar \
+            --sdk "$SOURCE_PLATFORM_SDK_VERSION" || ABORT "Unable to preserve the current UWB boot classpath"
+        unset UWB_CLASSPATH_REFERENCE
         ADD_TO_WORK_DIR "b0qxxx" "system" \
             "system/framework/semuwb-service.jar" 0 0 644 "u:object_r:system_file:s0"
         ADD_TO_WORK_DIR "b0qxxx" "system" \
