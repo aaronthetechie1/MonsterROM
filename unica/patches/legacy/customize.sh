@@ -197,9 +197,22 @@ if [ "$TARGET_PLATFORM_SDK_VERSION" -lt "36" ]; then
     if [ ! "$(GET_PROP "ro.telephony.sim_slots.count")" ] && \
             ! grep -q "ro.telephony.sim_slots.count" "$WORK_DIR/vendor/bin/secril_config_svc" && \
             ! grep -q -r "config_num_physical_slots" "$WORK_DIR/vendor/overlay"; then
-        PATCHED=true
-        APPLY_PATCH "system" "system/framework/telephony-common.jar" \
-            "$MODPATH/ril/telephony-common.jar/0001-Backport-legacy-UiccController-code.patch"
+        if [[ "$SOURCE_PLATFORM_SDK_VERSION" == "37" ]]; then
+            DECODE_APK "system" "system/framework/telephony-common.jar"
+            UICC_LEGACY_CODE="$(sed -n '/const-string v4, "ro.vendor.api_level"/,/iput p2, p0, .*->PROJECT_SIM_NUM:I/p' \
+                "$APKTOOL_DIR/system/framework/telephony-common.jar/smali/com/android/internal/telephony/uicc/UiccController.smali" | \
+                sed '/^[[:space:]]*$/d; s/^[[:space:]]*//')"
+            if [[ "$UICC_LEGACY_CODE" != *$'sget v5, Landroid/os/Build$VERSION;->DEVICE_INITIAL_SDK_INT:I\ninvoke-static {v4, v5}, Landroid/os/SystemProperties;->getInt(Ljava/lang/String;I)I\nmove-result v4'* ]] || \
+                    [[ "$UICC_LEGACY_CODE" != *$'const v5, 0x316a4\nif-gt v4, v5, :cond_0'* ]] || \
+                    [[ "$UICC_LEGACY_CODE" != *$'iget-object v4, p0, Lcom/android/internal/telephony/uicc/UiccController;->mCis:[Lcom/android/internal/telephony/CommandsInterface;\narray-length v5, v4\nif-ge p2, v5, :cond_0\narray-length p2, v4\n:cond_0\niput p2, p0, Lcom/android/internal/telephony/uicc/UiccController;->PROJECT_SIM_NUM:I' ]]; then
+                ABORT "Unrecognized source UiccController legacy SIM slot handling"
+            fi
+            unset UICC_LEGACY_CODE
+        else
+            PATCHED=true
+            APPLY_PATCH "system" "system/framework/telephony-common.jar" \
+                "$MODPATH/ril/telephony-common.jar/0001-Backport-legacy-UiccController-code.patch"
+        fi
     fi
 fi
 
@@ -217,14 +230,23 @@ if [ "$TARGET_PLATFORM_SDK_VERSION" -lt "35" ]; then
 fi
 
 # Ensure IMAGE_CODEC_SAMSUNG support (pre-API 35)
-if [ "$TARGET_PLATFORM_SDK_VERSION" -lt "35" ]; then
-    if [ "$(GET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_CAMERA_CONFIG_VENDOR_LIB_INFO")" ] && \
-            [[ "$(GET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_CAMERA_CONFIG_VENDOR_LIB_INFO")" != *"image_codec.samsung"* ]]; then
-        PATCHED=true
-        SET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_CAMERA_CONFIG_VENDOR_LIB_INFO" \
-            "$(GET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_CAMERA_CONFIG_VENDOR_LIB_INFO"),image_codec.samsung.v1"
-    fi
+SOURCE_IMAGE_CODEC_FEATURE="$(GET_FLOATING_FEATURE_CONFIG \
+    "$FW_DIR/$(cut -d "/" -f 1 -s <<< "$SOURCE_FIRMWARE")_$(cut -d "/" -f 2 -s <<< "$SOURCE_FIRMWARE")/system/system/etc/floating_feature.xml" \
+    "SEC_FLOATING_FEATURE_CAMERA_CONFIG_VENDOR_LIB_INFO")"
+TARGET_IMAGE_CODEC_FEATURE="$(GET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_CAMERA_CONFIG_VENDOR_LIB_INFO")"
+if [[ "$SOURCE_IMAGE_CODEC_FEATURE" == *"image_codec.samsung.v2"* ]] && \
+        [[ "$TARGET_IMAGE_CODEC_FEATURE" == *"image_codec.samsung.v1"* ]]; then
+    PATCHED=true
+    SET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_CAMERA_CONFIG_VENDOR_LIB_INFO" \
+        "${TARGET_IMAGE_CODEC_FEATURE/image_codec.samsung.v1/image_codec.samsung.v2}"
+elif [ "$TARGET_PLATFORM_SDK_VERSION" -lt "35" ] && \
+        [ "$TARGET_IMAGE_CODEC_FEATURE" ] && \
+        [[ "$TARGET_IMAGE_CODEC_FEATURE" != *"image_codec.samsung"* ]]; then
+    PATCHED=true
+    SET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_CAMERA_CONFIG_VENDOR_LIB_INFO" \
+        "$TARGET_IMAGE_CODEC_FEATURE,image_codec.samsung.v1"
 fi
+unset SOURCE_IMAGE_CODEC_FEATURE TARGET_IMAGE_CODEC_FEATURE
 
 # Ensure Knox Matrix support
 # - Check if target firmware runs on One UI 5.1.1 or above
@@ -477,14 +499,16 @@ if [ "$TARGET_PLATFORM_SDK_VERSION" -lt "35" ]; then
             'configCodec(Lcom/samsung/android/sum/core/message/Message;)V' \
             'const v4, 0x7f420888' \
             'const v4, 0x7f000789'
-        if xxd -p -c 0 "$WORK_DIR/system/system/lib/libstagefright.so" | grep -q "ceec002848d1724c0620"; then
-            HEX_PATCH "$WORK_DIR/system/system/lib/libstagefright.so" \
-                "ceec002848d1724c0620" "ceec002848e0724c0620"
-        elif xxd -p -c 0 "$WORK_DIR/system/system/lib/libstagefright.so" | grep -q "aaea002879d1264c0620"; then
-            HEX_PATCH "$WORK_DIR/system/system/lib/libstagefright.so" \
-                "aaea002879d1264c0620" "aaea002879e0264c0620"
-        else
-            ABORT "No known patch available for the supplied libstagefright.so"
+        if [ -f "$WORK_DIR/system/system/lib/libstagefright.so" ]; then
+            if xxd -p -c 0 "$WORK_DIR/system/system/lib/libstagefright.so" | grep -q "ceec002848d1724c0620"; then
+                HEX_PATCH "$WORK_DIR/system/system/lib/libstagefright.so" \
+                    "ceec002848d1724c0620" "ceec002848e0724c0620"
+            elif xxd -p -c 0 "$WORK_DIR/system/system/lib/libstagefright.so" | grep -q "aaea002879d1264c0620"; then
+                HEX_PATCH "$WORK_DIR/system/system/lib/libstagefright.so" \
+                    "aaea002879d1264c0620" "aaea002879e0264c0620"
+            else
+                ABORT "No known patch available for the supplied libstagefright.so"
+            fi
         fi
         if xxd -p -c 0 "$WORK_DIR/system/system/lib64/libstagefright.so" | grep -q "70690594205100347a9a40f9"; then
             HEX_PATCH "$WORK_DIR/system/system/lib64/libstagefright.so" \
