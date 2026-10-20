@@ -1,0 +1,149 @@
+{
+  "schema": 1,
+  "id": "vndk",
+  "profiles": [
+    "s21"
+  ],
+  "files": [
+    {
+      "path": "hw32",
+      "profiles": [
+        "s21"
+      ],
+      "metadata": {
+        "type": "symlink",
+        "mode": "0777",
+        "uid": 1000,
+        "gid": 1000,
+        "xattrs": {
+          "security.selinux": "753a6f626a6563745f723a73797374656d5f6c69625f66696c653a733000"
+        }
+      },
+      "target": "compat/vndk/v30/lib/hw"
+    },
+    {
+      "path": "hw64",
+      "profiles": [
+        "s21"
+      ],
+      "metadata": {
+        "type": "symlink",
+        "mode": "0777",
+        "uid": 1000,
+        "gid": 1000,
+        "xattrs": {
+          "security.selinux": "753a6f626a6563745f723a73797374656d5f6c69625f66696c653a733000"
+        }
+      },
+      "target": "compat/vndk/v30/lib64/hw"
+    },
+    {
+      "path": "v30",
+      "profiles": [
+        "s21"
+      ],
+      "metadata": {
+        "type": "symlink",
+        "mode": "0777",
+        "uid": 1000,
+        "gid": 1000,
+        "xattrs": {
+          "security.selinux": "753a6f626a6563745f723a73797374656d5f6c69625f66696c653a733000"
+        }
+      },
+      "target": "compat/vndk/v30/etc"
+    },
+    {
+      "path": "compat/vndk/v30/lib/libhidlbase.so",
+      "profiles": [
+        "s21"
+      ],
+      "metadata": {
+        "type": "regular",
+        "mode": "0644",
+        "uid": 1000,
+        "gid": 1000,
+        "xattrs": {
+          "security.selinux": "753a6f626a6563745f723a73797374656d5f6c69625f66696c653a733000"
+        }
+      },
+      "sha256": "10a5b606cdbf6431f64b157e56921698e34da531539946e7c71dc29f5c50e1ea",
+      "source": {
+        "kind": "payload",
+        "path": "payload/s21/compat/vndk/v30/lib/libhidlbase.so"
+      },
+      "overrides_bundle": true
+    },
+    {
+      "path": "compat/vndk/v30/lib64/libhidlbase.so",
+      "profiles": [
+        "s21"
+      ],
+      "metadata": {
+        "type": "regular",
+        "mode": "0644",
+        "uid": 1000,
+        "gid": 1000,
+        "xattrs": {
+          "security.selinux": "753a6f626a6563745f723a73797374656d5f6c69625f66696c653a733000"
+        }
+      },
+      "sha256": "b285102aa37962df92974246c82253f7f118b5f06e07bdde1b297981d74183a9",
+      "source": {
+        "kind": "payload",
+        "path": "payload/s21/compat/vndk/v30/lib64/libhidlbase.so"
+      },
+      "overrides_bundle": true
+    }
+  ],
+  "patches": [],
+  "input_contracts": [],
+  "bundles": [
+    {
+      "profiles": [
+        "s21"
+      ],
+      "destination": "compat/vndk/v30",
+      "members": 579,
+      "source": {
+        "kind": "apex",
+        "root": "target",
+        "path": "system/system/system_ext/apex/com.android.vndk.v30.apex",
+        "archive_sha256": "189ea2aab862412c0a19e1af811542d8d4051980560cd0c53c6733bcf39e79f5"
+      },
+      "include": [
+        "lib/",
+        "lib64/",
+        "etc/"
+      ],
+      "metadata": {
+        "type": "regular",
+        "mode": "0644",
+        "uid": 1000,
+        "gid": 1000,
+        "xattrs": {
+          "security.selinux": "753a6f626a6563745f723a73797374656d5f6c69625f66696c653a733000"
+        }
+      }
+    }
+  ],
+  "source_hashes": {
+    "build-hidl-paths.py": "362a8966b4f61d91a410cee21b640a29bd0a339c563e95a8beb2a07eb32e4d58",
+    "customize.sh": "4d7c9a040a9a9f43ede7e6e9685111f87964354d557208e4b72523ef7da4e554",
+    "module.prop": "cd1a65dc354ed20dc410f5804e48df16f584cb433d91a79d7ab89c45aa9c54fd"
+  },
+  "target_variants": {
+    "r9s": {
+      "bundles": {
+        "compat/vndk/v30": {
+          "source": {
+            "kind": "apex",
+            "root": "target",
+            "path": "system/system/system_ext/apex/com.android.vndk.v30.apex",
+            "archive_sha256": "9216a0f2928412ee3f7037f9e1d7753448de758b390c8cac114e4f6d3015cc88"
+          }
+        }
+      }
+    }
+  }
+}
