@@ -2,6 +2,13 @@ name: Seventeen full builds
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Device to build
+        required: true
+        default: all
+        type: choice
+        options: [all, o1s, t2s, p3s, r9s]
   push:
     branches: ['seventeen']
     paths:
@@ -22,7 +29,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.target || 'all' }}
   cancel-in-progress: true
 
 jobs:
@@ -34,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [o1s, t2s, p3s, r9s]
+        target: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.target != 'all' && format('["{0}"]', inputs.target) || '["o1s","t2s","p3s","r9s"]') }}
 
     defaults:
       run:
@@ -75,10 +82,13 @@ jobs:
             attr autoconf automake bc brotli build-essential ccache clang cmake curl \
             ffmpeg fuse3 git libbrotli-dev libbz2-dev libfuse3-dev libgtest-dev \
             liblz4-dev liblzma-dev libpcre2-dev libprotobuf-dev libssl-dev \
-            libtool libunwind-dev libzstd-dev linux-modules-extra-$(uname -r) \
+            libtool libunwind-dev libzstd-dev \
             lld lz4 ninja-build p7zip-full pkg-config protobuf-compiler \
             python3-venv unzip uuid-dev webp zip zlib1g-dev
-          sudo modprobe erofs f2fs
+          if ! sudo modprobe -a erofs f2fs; then
+            sudo env DEBIAN_FRONTEND=noninteractive apt install -yq "linux-modules-extra-$(uname -r)"
+            sudo modprobe -a erofs f2fs
+          fi
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ -n "$PLATFORM_KEY_PK8" ] && [ -n "$PLATFORM_KEY_PEM" ]; then
