@@ -1,0 +1,45 @@
+name: Seventeen firmware connection check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['seventeen']
+    paths:
+      - '.github/workflows/seventeen-firmware-check.yml'
+      - '.github/scripts/check_firmware_connection.py'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout downloader and configs
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /.gitmodules
+            /.github/scripts/check_firmware_connection.py
+            /external/samloader
+            /unica/configs/essi.sh
+            /target/o1s/config.sh
+            /target/t2s/config.sh
+            /target/p3s/config.sh
+            /target/r9s/config.sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install configured downloader
+        run: |
+          git submodule update --init --depth=1 external/samloader
+          python -m pip install ./external/samloader
+
+      - name: Check metadata and download endpoint headers
+        run: timeout 300 python -u .github/scripts/check_firmware_connection.py
