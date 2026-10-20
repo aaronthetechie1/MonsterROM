@@ -5,7 +5,11 @@ if [ ! -f "$SRC_DIR/security/${CERT_PREFIX}_platform.x509.pem" ]; then
     ABORT "File not found: security/${CERT_PREFIX}_platform.x509.pem"
 fi
 
-APPLY_PATCH "system" "system/framework/services.jar" "$MODPATH/services.jar/0001-Allow-custom-platform-signature.patch"
+SIGNATURE_PATCH_SUFFIX=""
+if [ "$SOURCE_PLATFORM_SDK_VERSION" = "37" ]; then
+    SIGNATURE_PATCH_SUFFIX="-sdk37"
+fi
+APPLY_PATCH "system" "system/framework/services.jar" "$MODPATH/services.jar/0001-Allow-custom-platform-signature$SIGNATURE_PATCH_SUFFIX.patch"
 
 CERT_SIGNATURE="$(sed "/CERTIFICATE/d" "$SRC_DIR/security/${CERT_PREFIX}_platform.x509.pem" | tr -d "\n" | base64 -d | xxd -p -c 0)"
 SMALI_PATCH "system" "system/framework/services.jar" \
@@ -15,4 +19,4 @@ SMALI_PATCH "system" "system/framework/services.jar" \
     "$CERT_SIGNATURE" \
     > /dev/null
 
-unset CERT_PREFIX CERT_SIGNATURE
+unset CERT_PREFIX CERT_SIGNATURE SIGNATURE_PATCH_SUFFIX
