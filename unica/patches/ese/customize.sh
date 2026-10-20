@@ -89,11 +89,19 @@ if [[ "$SOURCE_SECURITY_CONFIG_ESE_CHIP_VENDOR" != "none" ]] && [[ "$SOURCE_SECU
             "eSE_Vendor: ${TARGET_SECURITY_CONFIG_ESE_CHIP_VENDOR//none/}"
     fi
     if [[ "$SOURCE_SECURITY_CONFIG_ESE_COS_NAME" != "$TARGET_SECURITY_CONFIG_ESE_COS_NAME" ]]; then
-        SMALI_PATCH "system" "system/app/SecureElement/SecureElement.apk" \
-            "smali/com/android/se/internal/UtilExtension.smali" "replace" \
-            "supportEseHal()Z" \
-            "$SOURCE_SECURITY_CONFIG_ESE_COS_NAME" \
-            "${TARGET_SECURITY_CONFIG_ESE_COS_NAME//none/}"
+        if [[ "$SOURCE_PLATFORM_SDK_VERSION" == "37" ]]; then
+            SMALI_PATCH "system" "system/app/SecureElement/SecureElement.apk" \
+                "smali/com/android/se/internal/UtilExtension.smali" "replace" \
+                "supportEseHal()Z" \
+                ", eSE_COS: $SOURCE_SECURITY_CONFIG_ESE_COS_NAME" \
+                ", eSE_COS: ${TARGET_SECURITY_CONFIG_ESE_COS_NAME//none/}"
+        else
+            SMALI_PATCH "system" "system/app/SecureElement/SecureElement.apk" \
+                "smali/com/android/se/internal/UtilExtension.smali" "replace" \
+                "supportEseHal()Z" \
+                "$SOURCE_SECURITY_CONFIG_ESE_COS_NAME" \
+                "${TARGET_SECURITY_CONFIG_ESE_COS_NAME//none/}"
+        fi
     fi
     if [[ "$SOURCE_SECURITY_CONFIG_ESE_CHIP_VENDOR" != "$TARGET_SECURITY_CONFIG_ESE_CHIP_VENDOR" ]]; then
         SMALI_PATCH "system" "system/framework/framework.jar" \
