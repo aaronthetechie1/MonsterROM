@@ -130,8 +130,16 @@ USE_CURRENT_IMAGE_CODEC_NODE()
 SOURCE_FIRMWARE_PATH="$(cut -d "/" -f 1 -s <<< "$SOURCE_FIRMWARE")_$(cut -d "/" -f 2 -s <<< "$SOURCE_FIRMWARE")"
 TARGET_FIRMWARE_PATH="$(cut -d "/" -f 1 -s <<< "$TARGET_FIRMWARE")_$(cut -d "/" -f 2 -s <<< "$TARGET_FIRMWARE")"
 
+if [ "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ] && \
+        [ ! -d "$FW_DIR/$TARGET_FIRMWARE_PATH/system/system/cameradata/portrait_data" ]; then
+    ABORT "Target camera portrait model directory is missing"
+fi
 DELETE_FROM_WORK_DIR "system" "system/cameradata/portrait_data"
 ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "system" "system/cameradata/portrait_data" 0 0 755 "u:object_r:system_file:s0"
+if [ "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]; then
+    VALIDATE_CAMERA_MODEL_MANIFEST \
+        "$WORK_DIR/system/system/cameradata/portrait_data/single_bokeh_feature.json"
+fi
 if [ -f "$SRC_DIR/target/$TARGET_CODENAME/camera/singletake/service-feature.xml" ]; then
     LOG "- Adding /system/system/cameradata/singletake/service-feature.xml"
     EVAL "cp -a \"$SRC_DIR/target/$TARGET_CODENAME/camera/singletake/service-feature.xml\" \"$WORK_DIR/system/system/cameradata/singletake/service-feature.xml\""
@@ -212,13 +220,14 @@ if [ -f "$WORK_DIR/system/system/priv-app/SingleTakeService/SingleTakeService.ap
 fi
 
 # SEC_PRODUCT_FEATURE_CAMERA_SINGLETAKE_SOLUTIONS
-if ! grep -q "ENABLE_SINGLE_TAKE_LITE.*true" "$WORK_DIR/system/system/cameradata/singletake/service-feature.xml" 2>/dev/null && \
-        ! grep -q "SUPPORT_SMART_CROP.*false" "$WORK_DIR/system/system/cameradata/singletake/service-feature.xml" 2>/dev/null; then
-    if [ -d "$FW_DIR/$SOURCE_FIRMWARE_PATH/vendor/etc/singletake/SmartCrop" ]; then
-        if [ ! -d "$WORK_DIR/vendor/etc/singletake/SmartCrop" ] || \
-                [ "$TARGET_PLATFORM_SDK_VERSION" -lt "$SOURCE_PLATFORM_SDK_VERSION" ]; then
-            ADD_TO_WORK_DIR "$SOURCE_FIRMWARE" "vendor" \
-                "etc/singletake/SmartCrop/SmartCrop.tflite" 0 0 644 "u:object_r:vendor_configs_file:s0"
+if [ "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]; then
+    if ! grep -q "ENABLE_SINGLE_TAKE_LITE.*true" "$WORK_DIR/system/system/cameradata/singletake/service-feature.xml" 2>/dev/null && \
+            ! grep -q "SUPPORT_SMART_CROP.*false" "$WORK_DIR/system/system/cameradata/singletake/service-feature.xml" 2>/dev/null; then
+        # One UI 9's libfixsal still names this exact portable fallback. Keep the
+        # target copy instead of requesting the removed Android 17 source path.
+        if ! IS_PORTABLE_TFLITE "$WORK_DIR/vendor/etc/singletake/SmartCrop/SmartCrop.tflite"; then
+            LOGW "Target SmartCrop model is unavailable; disabling Single Take Smart Crop"
+            EVAL "sed -i '/name=\"SUPPORT_SMART_CROP\"/s/value=\"true\"/value=\"false\"/' \"$WORK_DIR/system/system/cameradata/singletake/service-feature.xml\""
         fi
     elif [ "$SOURCE_PLATFORM_SDK_VERSION" -eq 37 ] && \
             [ -f "$FW_DIR/$TARGET_FIRMWARE_PATH/vendor/etc/singletake/SmartCrop/SmartCrop.tflite" ]; then
@@ -233,8 +242,27 @@ if ! grep -q "ENABLE_SINGLE_TAKE_LITE.*true" "$WORK_DIR/system/system/cameradata
         unset SOURCE_SUPPORT_SMART_CROP TARGET_SUPPORT_SMART_CROP
     fi
 else
-    if [ -d "$WORK_DIR/vendor/etc/singletake/SmartCrop" ]; then
-        DELETE_FROM_WORK_DIR "vendor" "etc/singletake/SmartCrop"
+    if ! grep -q "ENABLE_SINGLE_TAKE_LITE.*true" "$WORK_DIR/system/system/cameradata/singletake/service-feature.xml" 2>/dev/null && \
+            ! grep -q "SUPPORT_SMART_CROP.*false" "$WORK_DIR/system/system/cameradata/singletake/service-feature.xml" 2>/dev/null; then
+        if [ -d "$FW_DIR/$SOURCE_FIRMWARE_PATH/vendor/etc/singletake/SmartCrop" ]; then
+            if [ ! -d "$WORK_DIR/vendor/etc/singletake/SmartCrop" ] || \
+                    [ "$TARGET_PLATFORM_SDK_VERSION" -lt "$SOURCE_PLATFORM_SDK_VERSION" ]; then
+                ADD_TO_WORK_DIR "$SOURCE_FIRMWARE" "vendor" \
+                    "etc/singletake/SmartCrop/SmartCrop.tflite" 0 0 644 "u:object_r:vendor_configs_file:s0"
+            fi
+        else
+            # TODO handle this condition
+            # shellcheck disable=SC2034
+            SOURCE_SUPPORT_SMART_CROP=false
+            # shellcheck disable=SC2034
+            TARGET_SUPPORT_SMART_CROP=true
+            LOG_MISSING_PATCHES "SOURCE_SUPPORT_SMART_CROP" "TARGET_SUPPORT_SMART_CROP"
+            unset SOURCE_SUPPORT_SMART_CROP TARGET_SUPPORT_SMART_CROP
+        fi
+    else
+        if [ -d "$WORK_DIR/vendor/etc/singletake/SmartCrop" ]; then
+            DELETE_FROM_WORK_DIR "vendor" "etc/singletake/SmartCrop"
+        fi
     fi
 fi
 
@@ -265,12 +293,26 @@ if [ "$SOURCE_CAMERA_CONFIG_ACTION_CLASSIFIER" ]; then
         fi
     else
         DELETE_FROM_WORK_DIR "system" "system/lib64/libVideoClassifier.camera.samsung.so"
+    fi
+    if [ -f "$WORK_DIR/system/system/lib64/libtensorflowLite2_11_0_dynamic_camera.so" ]; then
         DELETE_FROM_WORK_DIR "system" "system/lib64/libtensorflowLite2_11_0_dynamic_camera.so"
     fi
 else
-    if [ "$TARGET_CAMERA_CONFIG_ACTION_CLASSIFIER" ]; then
-        # TODO handle this condition
-        LOG_MISSING_PATCHES "SOURCE_CAMERA_CONFIG_ACTION_CLASSIFIER" "TARGET_CAMERA_CONFIG_ACTION_CLASSIFIER"
+    if [ "$SOURCE_CAMERA_CONFIG_ACTION_CLASSIFIER" ]; then
+        if [ "$TARGET_CAMERA_CONFIG_ACTION_CLASSIFIER" ]; then
+            if [ -d "$WORK_DIR/vendor/etc/singletake/dynamic_viewing" ]; then
+                DELETE_FROM_WORK_DIR "vendor" "etc/singletake/dynamic_viewing"
+            fi
+            ADD_TO_WORK_DIR "$SOURCE_FIRMWARE" "vendor" "etc/singletake/dynamic_viewing" 0 2000 755 "u:object_r:vendor_configs_file:s0"
+        else
+            DELETE_FROM_WORK_DIR "system" "system/lib64/libVideoClassifier.camera.samsung.so"
+            DELETE_FROM_WORK_DIR "system" "system/lib64/libtensorflowLite2_11_0_dynamic_camera.so"
+        fi
+    else
+        if [ "$TARGET_CAMERA_CONFIG_ACTION_CLASSIFIER" ]; then
+            # TODO handle this condition
+            LOG_MISSING_PATCHES "SOURCE_CAMERA_CONFIG_ACTION_CLASSIFIER" "TARGET_CAMERA_CONFIG_ACTION_CLASSIFIER"
+        fi
     fi
 fi
 
@@ -344,17 +386,41 @@ fi
 # SEC_PRODUCT_FEATURE_GALLERY_CONFIG_PET_CLUSTER_VERSION
 SOURCE_GALLERY_CONFIG_PET_CLUSTER_VERSION="$(GET_FLOATING_FEATURE_CONFIG "$FW_DIR/$SOURCE_FIRMWARE_PATH/system/system/etc/floating_feature.xml" "SEC_FLOATING_FEATURE_GALLERY_CONFIG_PET_CLUSTER_VERSION")"
 TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION="$(GET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_GALLERY_CONFIG_PET_CLUSTER_VERSION")"
-if [[ "$SOURCE_GALLERY_CONFIG_PET_CLUSTER_VERSION" != "None" ]]; then
-    if [[ "$TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION" == "None" ]]; then
-        DELETE_FROM_WORK_DIR "system" "system/etc/default-permissions/default-permissions-com.samsung.petservice.xml"
-        DELETE_FROM_WORK_DIR "system" "system/etc/permissions/privapp-permissions-com.samsung.petservice.xml"
-        DELETE_FROM_WORK_DIR "system" "system/lib64/libPetClustering.camera.samsung.so"
-        DELETE_FROM_WORK_DIR "system" "system/priv-app/PetService"
+STOCK_TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION="$(GET_FLOATING_FEATURE_CONFIG "$FW_DIR/$TARGET_FIRMWARE_PATH/system/system/etc/floating_feature.xml" "SEC_FLOATING_FEATURE_GALLERY_CONFIG_PET_CLUSTER_VERSION")"
+if [ "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ] && { \
+        [[ "$STOCK_TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION" == "None" ]] || \
+        [ ! -f "$FW_DIR/$TARGET_FIRMWARE_PATH/vendor/lib64/libPetDetector_v1.camera.samsung.so" ];
+}; then
+    # PetService in the Android 17 source uses libPetDetector_v1 and the new
+    # aic_pet_detector contract. The Exynos 2100 vendor exposes neither.
+    LOG "- Disabling PetService on the target vendor"
+    SET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_GALLERY_CONFIG_PET_CLUSTER_VERSION" "None"
+    TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION="None"
+    if grep -q 'name="SUPPORT_PET_DETECTION".*value="true"' \
+            "$WORK_DIR/system/system/cameradata/singletake/service-feature.xml" 2> /dev/null; then
+        EVAL "sed -i '/name=\"SUPPORT_PET_DETECTION\"/s/value=\"true\"/value=\"false\"/' \"$WORK_DIR/system/system/cameradata/singletake/service-feature.xml\""
     fi
+    [ ! -f "$WORK_DIR/system/system/etc/default-permissions/default-permissions-com.samsung.petservice.xml" ] || \
+        DELETE_FROM_WORK_DIR "system" "system/etc/default-permissions/default-permissions-com.samsung.petservice.xml"
+    [ ! -f "$WORK_DIR/system/system/etc/permissions/privapp-permissions-com.samsung.petservice.xml" ] || \
+        DELETE_FROM_WORK_DIR "system" "system/etc/permissions/privapp-permissions-com.samsung.petservice.xml"
+    [ ! -f "$WORK_DIR/system/system/lib64/libPetClustering.camera.samsung.so" ] || \
+        DELETE_FROM_WORK_DIR "system" "system/lib64/libPetClustering.camera.samsung.so"
+    [ ! -d "$WORK_DIR/system/system/priv-app/PetService" ] || \
+        DELETE_FROM_WORK_DIR "system" "system/priv-app/PetService"
 else
-    if [[ "$TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION" != "None" ]]; then
-        # TODO handle this condition
-        LOG_MISSING_PATCHES "SOURCE_GALLERY_CONFIG_PET_CLUSTER_VERSION" "TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION"
+    if [[ "$SOURCE_GALLERY_CONFIG_PET_CLUSTER_VERSION" != "None" ]]; then
+        if [[ "$TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION" == "None" ]]; then
+            DELETE_FROM_WORK_DIR "system" "system/etc/default-permissions/default-permissions-com.samsung.petservice.xml"
+            DELETE_FROM_WORK_DIR "system" "system/etc/permissions/privapp-permissions-com.samsung.petservice.xml"
+            DELETE_FROM_WORK_DIR "system" "system/lib64/libPetClustering.camera.samsung.so"
+            DELETE_FROM_WORK_DIR "system" "system/priv-app/PetService"
+        fi
+    else
+        if [[ "$TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION" != "None" ]]; then
+            # TODO handle this condition
+            LOG_MISSING_PATCHES "SOURCE_GALLERY_CONFIG_PET_CLUSTER_VERSION" "TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION"
+        fi
     fi
 fi
 
@@ -558,6 +624,7 @@ unset SOURCE_FIRMWARE_PATH TARGET_FIRMWARE_PATH \
     SOURCE_CAMERA_CONFIG_ACTION_CLASSIFIER TARGET_CAMERA_CONFIG_ACTION_CLASSIFIER \
     SOURCE_CAMERA_CONFIG_GPPM_SOLUTIONS TARGET_CAMERA_CONFIG_GPPM_SOLUTIONS \
     SOURCE_GALLERY_CONFIG_PET_CLUSTER_VERSION TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION \
+    STOCK_TARGET_GALLERY_CONFIG_PET_CLUSTER_VERSION \
     SOURCE_SAIV_CONFIG_ARDOODLE_LIB TARGET_SAIV_CONFIG_ARDOODLE_LIB \
     SOURCE_CAMERA_CONFIG_VENDOR_LIB_INFO TARGET_CAMERA_CONFIG_VENDOR_LIB_INFO \
     SOURCE_CAMERA_DOCUMENTSCAN_SOLUTIONS TARGET_CAMERA_DOCUMENTSCAN_SOLUTIONS

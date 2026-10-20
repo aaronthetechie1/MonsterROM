@@ -106,6 +106,83 @@ EXTRACT_KERNEL_MODULES() {
         fi
     done < <(find "$TMP_DIR/out" -maxdepth 1 -type f -name "vendor_ramdisk*")
 }
+
+# Android 17 already carries the compatibility fallback removed by AOSP in
+# 42e37234cee15c9f3fcfac0532110abfc8843b99.  Do not replay the Android 16
+# patch against CP2A bytecode: verify the native implementation instead.
+VERIFY_NATIVE_UICC_PHYSICAL_SLOT_COMPAT() {
+    DECODE_APK "system" "system/framework/telephony-common.jar" || return 1
+
+    local DECODED_JAR="$APKTOOL_DIR/system/framework/telephony-common.jar"
+    local MATCHES=()
+    local SMALI
+    local CONSTRUCTOR
+    local COMPAT_BLOCK
+    local PREVIOUS_LINE=0
+    local CURRENT_LINE
+    local ANCHOR
+
+    mapfile -t MATCHES < <(find "$DECODED_JAR" -type f \
+        -path "*/com/android/internal/telephony/uicc/UiccController.smali")
+    if [ "${#MATCHES[@]}" -ne "1" ]; then
+        ABORT "Expected exactly one UiccController.smali in /system/system/framework/telephony-common.jar"
+        return 1
+    fi
+    SMALI="${MATCHES[0]}"
+
+    CONSTRUCTOR="$(awk '
+        /^\.method .* constructor .*<init>\(Landroid\/content\/Context;.*FeatureFlags;\)V$/ {
+            found = 1
+        }
+        found { print }
+        found && /^\.end method$/ { exit }
+    ' "$SMALI")"
+    if [ -z "$CONSTRUCTOR" ]; then
+        ABORT "Android 17 UiccController constructor anchor not found"
+        return 1
+    fi
+
+    COMPAT_BLOCK="$(awk '
+        index($0, "\"ro.vendor.api_level\"") { found = 1 }
+        found { print }
+        found && index($0, "->PROJECT_SIM_NUM:I") { exit }
+    ' <<< "$CONSTRUCTOR")"
+    if [ -z "$COMPAT_BLOCK" ]; then
+        ABORT "Android 17 UiccController physical-slot compatibility block not found"
+        return 1
+    fi
+
+    # Require the control-flow anchors in semantic order.  In particular, the
+    # configured physical-slot count must be raised to mCis.length for legacy
+    # vendor API levels before PROJECT_SIM_NUM is stored.
+    for ANCHOR in \
+        '"ro.vendor.api_level"' \
+        'Landroid/os/SystemProperties;->getInt(Ljava/lang/String;I)I' \
+        '"current vendor api_level: "' \
+        '0x316a4' \
+        'if-gt ' \
+        '"Adjusting numPhysicalSlots for firstApiLevel = "' \
+        'Lcom/android/internal/telephony/uicc/UiccController;->mCis:[Lcom/android/internal/telephony/CommandsInterface;' \
+        'array-length ' \
+        'if-ge p2, ' \
+        'array-length p2, ' \
+        'Lcom/android/internal/telephony/uicc/UiccController;->PROJECT_SIM_NUM:I'; do
+        CURRENT_LINE="$(grep -n -m 1 -F -- "$ANCHOR" <<< "$COMPAT_BLOCK" | cut -d ":" -f 1)"
+        if [ -z "$CURRENT_LINE" ] || [ "$CURRENT_LINE" -le "$PREVIOUS_LINE" ]; then
+            ABORT "Android 17 UiccController compatibility anchor missing or out of order: $ANCHOR"
+            return 1
+        fi
+        PREVIOUS_LINE="$CURRENT_LINE"
+    done
+
+    if [ "$(grep -F -c '"ro.vendor.api_level"' <<< "$CONSTRUCTOR")" -ne "1" ] || \
+            [ "$(grep -F -c '"Adjusting numPhysicalSlots for firstApiLevel = "' <<< "$CONSTRUCTOR")" -ne "1" ]; then
+        ABORT "Android 17 UiccController compatibility anchors are ambiguous"
+        return 1
+    fi
+
+    LOG "- Verified native Android 17 UiccController physical-slot compatibility"
+}
 # ]
 
 PATCHED=false
@@ -705,3 +782,4 @@ fi
 
 unset PATCHED TARGET_FIRMWARE_PATH
 unset -f BACKPORT_SF_PROPS EXTRACT_KERNEL_IMAGE EXTRACT_KERNEL_MODULES
+unset -f VERIFY_NATIVE_UICC_PHYSICAL_SLOT_COMPAT

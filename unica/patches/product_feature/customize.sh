@@ -31,6 +31,95 @@ LOG_MISSING_PATCHES()
         ABORT "${MESSAGE}. Aborting"
     fi
 }
+
+REQUIRE_FIXED_COUNT()
+{
+    local FILE="$1"
+    local VALUE="$2"
+    local EXPECTED="$3"
+    local DESCRIPTION="$4"
+    local ACTUAL
+
+    if [ ! -f "$FILE" ]; then
+        ABORT "Android 17 product-feature gate is missing: ${FILE//$APKTOOL_DIR\//}"
+        return 1
+    fi
+
+    ACTUAL="$(grep -F -c -- "$VALUE" "$FILE" || true)"
+    if [ "$ACTUAL" -ne "$EXPECTED" ]; then
+        ABORT "Unexpected Android 17 $DESCRIPTION shape (expected $EXPECTED exact match(es), found $ACTUAL)"
+        return 1
+    fi
+}
+
+REQUIRE_METHOD_FIXED_COUNT()
+{
+    local FILE="$1"
+    local METHOD="$2"
+    local VALUE="$3"
+    local EXPECTED="$4"
+    local DESCRIPTION="$5"
+    local ACTUAL
+
+    if [ ! -f "$FILE" ]; then
+        ABORT "Android 17 product-feature gate is missing: ${FILE//$APKTOOL_DIR\//}"
+        return 1
+    fi
+
+    ACTUAL="$(awk -v FN="$METHOD" -v STR="$VALUE" '
+        /^\.method/ { inside = index($0, FN) > 0 }
+        inside && index($0, STR) { count++ }
+        inside && /^\.end method/ { inside = 0 }
+        END { print count + 0 }
+    ' "$FILE")"
+    if [ "$ACTUAL" -ne "$EXPECTED" ]; then
+        ABORT "Unexpected Android 17 $DESCRIPTION shape in $METHOD (expected $EXPECTED exact match(es), found $ACTUAL)"
+        return 1
+    fi
+}
+
+REPLACE_SMALI_METHOD()
+{
+    local FILE="$1"
+    local METHOD="$2"
+    local BODY="$3"
+    local COUNT
+    local BEFORE
+    local AFTER
+
+    if [ ! -f "$FILE" ]; then
+        ABORT "Android 17 product-feature method file is missing: ${FILE//$APKTOOL_DIR\//}"
+        return 1
+    fi
+
+    COUNT="$(awk -v FN="$METHOD" '/^\.method/ && index($0, FN) { count++ } END { print count + 0 }' "$FILE")"
+    if [ "$COUNT" -ne "1" ]; then
+        ABORT "Unexpected Android 17 method shape for $METHOD (found $COUNT declarations)"
+        return 1
+    fi
+
+    BEFORE="$(sha1sum "$FILE")"
+    awk -v FN="$METHOD" -v BODY="$BODY" '
+        /^\.method/ && index($0, FN) {
+            print BODY
+            inside = 1
+            next
+        }
+        inside && /^\.end method/ {
+            inside = 0
+            next
+        }
+        inside { next }
+        { print }
+    ' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+    AFTER="$(sha1sum "$FILE")"
+
+    if [ "$BEFORE" = "$AFTER" ]; then
+        ABORT "Failed to replace Android 17 method $METHOD"
+        return 1
+    fi
+    LOG "- Replacing Android 17 method \"$METHOD\" in ${FILE//$APKTOOL_DIR\//}"
+}
 # ]
 
 # SEC_PRODUCT_FEATURE_BUILD_MAINLINE_API_LEVEL
@@ -413,34 +502,6 @@ if [[ "$SOURCE_FINGERPRINT_CONFIG_SENSOR" != "$TARGET_FINGERPRINT_CONFIG_SENSOR"
                 ADD_TO_WORK_DIR "b4qxxx" "system" "system/priv-app/BiometricSetting/BiometricSetting.apk" 0 0 644 "u:object_r:system_file:s0"
                 APPLY_PATCH "system" "system/priv-app/BiometricSetting/BiometricSetting.apk" \
                     "$MODPATH/fingerprint/side_fp/BiometricSetting.apk/0001-Add-FEATURE_FINGERPRINT_JDM_HAL-support.patch"
-
-                APPLY_PATCH "system" "system/framework/framework.jar" \
-                    "$MODPATH/fingerprint/side_fp/framework.jar/0001-Add-side-fingerprint-sensor-support.patch"
-                APPLY_PATCH "system" "system/framework/services.jar" \
-                    "$MODPATH/fingerprint/side_fp/services.jar/0001-Add-side-fingerprint-sensor-support.patch"
-                EVAL "sed -i \"/implements/i .implements Lcom\/android\/server\/biometrics\/sensors\/fingerprint\/SemFpHalLifecycleListener;\" \"$APKTOOL_DIR/system/framework/services.jar/smali/com/android/server/biometrics/sensors/fingerprint/SemFingerprintServiceExtImpl.smali\""
-                APPLY_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
-                    "$MODPATH/fingerprint/side_fp/SecSettings.apk/0001-Add-side-fingerprint-sensor-support.patch"
-                EVAL "sed -i \"s/^\.implements.*/.implements Landroid\/widget\/CompoundButton\$OnCheckedChangeListener;/g\" \"$APKTOOL_DIR/system/priv-app/SecSettings/SecSettings.apk/smali_classes4/com/samsung/android/settings/biometrics/fingerprint/SuwFingerprintUsefulFeature\\\$\\\$ExternalSyntheticLambda1.smali\""
-                SMALI_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
-                    "smali_classes4/com/samsung/android/settings/biometrics/fingerprint/SuwFingerprintUsefulFeature\$\$ExternalSyntheticLambda4.smali" "remove"
-                SMALI_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
-                    "smali_classes4/com/samsung/android/settings/biometrics/fingerprint/SuwFingerprintUsefulFeature\$\$ExternalSyntheticLambda9.smali" "remove"
-                SMALI_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
-                    "smali_classes4/com/samsung/android/settings/biometrics/fingerprint/SuwFingerprintUsefulFeature\$1.smali" "remove"
-                APPLY_PATCH "system_ext" "priv-app/SystemUI/SystemUI.apk" \
-                    "$MODPATH/fingerprint/side_fp/SystemUI.apk/0001-Add-side-fingerprint-sensor-support.patch"
-                EVAL "sed -i \"s/^\.implements.*/.implements Ljava\/util\/function\/Consumer;/g\" \"$APKTOOL_DIR/system_ext/priv-app/SystemUI/SystemUI.apk/smali/com/android/keyguard/KeyguardSecUpdateMonitorImpl\\\$\\\$ExternalSyntheticLambda28.smali\""
-                SMALI_PATCH "system_ext" "priv-app/SystemUI/SystemUI.apk" \
-                    "smali/com/android/keyguard/KeyguardSecUpdateMonitorImpl\$\$ExternalSyntheticLambda24.smali" "remove"
-                SMALI_PATCH "system_ext" "priv-app/SystemUI/SystemUI.apk" \
-                    "smali/com/android/keyguard/KeyguardSecUpdateMonitorImpl\$\$ExternalSyntheticLambda29.smali" "remove"
-                SMALI_PATCH "system_ext" "priv-app/SystemUI/SystemUI.apk" \
-                    "smali/com/android/keyguard/KeyguardSecUpdateMonitorImpl\$\$ExternalSyntheticLambda33.smali" "remove"
-                SMALI_PATCH "system_ext" "priv-app/SystemUI/SystemUI.apk" \
-                    "smali/com/android/keyguard/KeyguardSecUpdateMonitorImpl\$\$ExternalSyntheticLambda40.smali" "remove"
-                SMALI_PATCH "system_ext" "priv-app/SystemUI/SystemUI.apk" \
-                    "smali/com/android/keyguard/KeyguardSecUpdateMonitorImpl\$\$ExternalSyntheticLambda42.smali" "remove"
 
                 if [[ "$TARGET_FINGERPRINT_CONFIG_SENSOR" == *"navi=1"* ]]; then
                     LOG "- Enabling FP_FEATURE_GESTURE_MODE:Z in /system/system/framework/services.jar/smali/com/android/server/biometrics/SemBiometricFeature.smali"
@@ -1377,8 +1438,24 @@ fi
 # SEC_PRODUCT_FEATURE_WLAN_SUPPORT_LOWLATENCY
 if $SOURCE_WLAN_SUPPORT_TWT_CONTROL && $SOURCE_WLAN_SUPPORT_LOWLATENCY; then
     if ! $TARGET_WLAN_SUPPORT_TWT_CONTROL; then
-        APPLY_PATCH "system" "system/framework/semwifi-service.jar" \
-            "$MODPATH/wifi/twt_control/semwifi-service.jar/0001-Disable-TWT_CONTROL-support.patch"
+        if [ "$SOURCE_PLATFORM_SDK_VERSION" -ge "37" ]; then
+            # One UI 9 obtains the TWT feature bits from the vendor feature
+            # string instead of populating the old API36 default map.  Gate
+            # the public support query itself so LOWLATENCY remains enabled.
+            REPLACE_SMALI_METHOD \
+                "$APKTOOL_DIR/system/framework/semwifi-service.jar/smali/com/samsung/android/server/wifi/driver/WifiDriverFeatureProvider.smali" \
+                "isTwtSupported()Z" \
+                '.method public isTwtSupported()Z
+    .locals 1
+
+    const/4 v0, 0x0
+
+    return v0
+.end method'
+        else
+            APPLY_PATCH "system" "system/framework/semwifi-service.jar" \
+                "$MODPATH/wifi/twt_control/semwifi-service.jar/0001-Disable-TWT_CONTROL-support.patch"
+        fi
 
         if ! $TARGET_WLAN_SUPPORT_LOWLATENCY; then
             APPLY_PATCH "system" "system/framework/semwifi-service.jar" \

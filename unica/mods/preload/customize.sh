@@ -1,8 +1,14 @@
 # Samsung Internet Browser
 # https://play.google.com/store/apps/details?id=com.sec.android.app.sbrowser
+SBROWSER_SHA256="6fad5501a3f9823c7dd9fafdfe1204f7246e487c8dea9c192426c07c8c48c981"
 LOG "- Downloading Samsung Internet app"
 DOWNLOAD_FILE "$(GET_GALAXY_STORE_DOWNLOAD_URL "com.sec.android.app.sbrowser")" \
     "$WORK_DIR/system/system/preload/SBrowser/SBrowser.apk"
+SBROWSER_ACTUAL_SHA256="$(sha256sum \
+    "$WORK_DIR/system/system/preload/SBrowser/SBrowser.apk" | cut -d " " -f 1)"
+if [ "$SBROWSER_ACTUAL_SHA256" != "$SBROWSER_SHA256" ]; then
+    ABORT "Samsung Internet digest mismatch: expected $SBROWSER_SHA256, found $SBROWSER_ACTUAL_SHA256"
+fi
 
 while IFS= read -r i; do
     i="${i//$WORK_DIR\/system\//}"
@@ -19,3 +25,5 @@ while IFS= read -r i; do
         EVAL "echo \"$i\" >> \"$WORK_DIR/system/system/etc/vpl_apks_count_list.txt\""
     fi
 done <<< "$(find "$WORK_DIR/system/system/preload")"
+
+unset SBROWSER_ACTUAL_SHA256 SBROWSER_SHA256

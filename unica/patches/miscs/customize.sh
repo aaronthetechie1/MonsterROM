@@ -1,3 +1,6 @@
+MISCS_MODULE_ROOT="$MODPATH"
+MISCS_PLATFORM_SDK="${SOURCE_PLATFORM_SDK_VERSION:-$(GET_PROP "system" "ro.build.version.sdk")}"
+
 SET_PROP_IF_DIFF "vendor" "ro.oem_unlock_supported" "0"
 
 # Better device/model detection in CoreRune

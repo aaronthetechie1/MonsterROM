@@ -18,35 +18,20 @@ index c54d369..c90ec3b 100644
 -    .locals 8
 +    .locals 3
  
--    invoke-virtual {p0}, Lcom/android/systemui/qs/tiles/SensorPrivacyToggleTile;->getSensorId()I
--
--    move-result v0
--
--    iget-object v1, p0, Lcom/android/systemui/qs/tiles/SensorPrivacyToggleTile;->mSensorPrivacyController:Lcom/android/systemui/statusbar/policy/IndividualSensorPrivacyController;
--
--    check-cast v1, Lcom/android/systemui/statusbar/policy/IndividualSensorPrivacyControllerImpl;
--
--    invoke-virtual {v1, v0}, Lcom/android/systemui/statusbar/policy/IndividualSensorPrivacyControllerImpl;->isSensorBlocked(I)Z
--
--    move-result v0
 +    iget-object v0, p0, Lcom/android/systemui/qs/tiles/SensorPrivacyToggleTile;->mSensorPrivacyController:Lcom/android/systemui/statusbar/policy/IndividualSensorPrivacyController;
- 
--    const/4 v2, 0x1
++
 +    check-cast v0, Lcom/android/systemui/statusbar/policy/IndividualSensorPrivacyControllerImpl;
- 
--    if-eqz v0, :cond_0
++
 +    const/4 v1, 0x1
- 
-     invoke-virtual {p0}, Lcom/android/systemui/qs/tiles/SensorPrivacyToggleTile;->getSensorId()I
- 
--    move-result v0
++
++    invoke-virtual {p0}, Lcom/android/systemui/qs/tiles/SensorPrivacyToggleTile;->getSensorId()I
++
 +    move-result v2
- 
-     invoke-virtual {p0}, Lcom/android/systemui/qs/tiles/SensorPrivacyToggleTile;->getSensorId()I
- 
-     move-result p0
- 
--    invoke-virtual {v1, p0}, Lcom/android/systemui/statusbar/policy/IndividualSensorPrivacyControllerImpl;->isSensorBlocked(I)Z
++
++    invoke-virtual {p0}, Lcom/android/systemui/qs/tiles/SensorPrivacyToggleTile;->getSensorId()I
++
++    move-result p0
++
 +    invoke-virtual {v0, p0}, Lcom/android/systemui/statusbar/policy/IndividualSensorPrivacyControllerImpl;->isSensorBlocked(I)Z
  
      move-result p0
@@ -195,13 +180,12 @@ index c54d369..c90ec3b 100644
 -
 -    iget-object p0, p0, Lcom/android/systemui/qs/tiles/SensorPrivacyToggleTile;->mDialog:Lcom/android/systemui/statusbar/phone/SystemUIDialog;
 +    xor-int/2addr p0, v1
- 
--    invoke-virtual {p0}, Landroid/app/AlertDialog;->show()V
++
 +    invoke-virtual {v0, v1, v2, p0}, Lcom/android/systemui/statusbar/policy/IndividualSensorPrivacyControllerImpl;->setSensorBlocked(IIZ)V
- 
--    :cond_3
-     return-void
- .end method
++
++    return-void
++
+     invoke-virtual {p0}, Lcom/android/systemui/qs/tiles/SensorPrivacyToggleTile;->getSensorId()I
 -- 
 2.53.0
 

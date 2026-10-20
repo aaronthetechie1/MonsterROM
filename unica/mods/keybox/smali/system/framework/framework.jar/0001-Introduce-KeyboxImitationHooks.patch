@@ -45,7 +45,7 @@ Subject: [PATCH] Introduce KeyboxImitationHooks
  create mode 100644 smali_classes6/io/mesalabs/unica/KeyboxUtils.smali
 
 diff --git a/smali_classes3/android/security/KeyStore2.smali b/smali_classes3/android/security/KeyStore2.smali
-index 80753521..217b4e3c 100644
+index e913b7a..9415747 100644
 --- a/smali_classes3/android/security/KeyStore2.smali
 +++ b/smali_classes3/android/security/KeyStore2.smali
 @@ -558,7 +558,7 @@
@@ -682,7 +682,7 @@ diff --git a/smali_classes4/android/system/keystore2/IKeystoreService$Stub$Proxy
  
      invoke-virtual {v0, p1, v2}, Landroid/os/Parcel;->writeTypedObject(Landroid/os/Parcelable;I)V
 diff --git a/smali_classes5/com/android/internal/org/bouncycastle/jcajce/provider/asymmetric/EC$Mappings.smali b/smali_classes5/com/android/internal/org/bouncycastle/jcajce/provider/asymmetric/EC$Mappings.smali
-index 7da5e848..581668b7 100644
+index 7da5e84..581668b 100644
 --- a/smali_classes5/com/android/internal/org/bouncycastle/jcajce/provider/asymmetric/EC$Mappings.smali
 +++ b/smali_classes5/com/android/internal/org/bouncycastle/jcajce/provider/asymmetric/EC$Mappings.smali
 @@ -26,7 +26,19 @@

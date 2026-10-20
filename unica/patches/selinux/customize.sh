@@ -5,6 +5,11 @@
 # - DO NOT add any parenthesis or statements (eg. "fabriccrypto" and NOT "expanttypeattribute ... (fabriccrypto)")
 # - DO NOT add unnecessary types or remove the existing ones unless they aren't necessary anymore for all devices
 
+# One UI 9.0 additions
+ENTRIES+="
+mosey_app
+"
+
 # One UI 8.0 additions
 ENTRIES+="
 heatmap_default
@@ -55,6 +60,26 @@ GET_SYSTEM_EXT()
     fi
 }
 
+# RESTORE_TARGET_MAPPING <partition> <file> <work file>
+RESTORE_TARGET_MAPPING()
+{
+    local PARTITION="$1"
+    local FILE="$2"
+    local WORK_FILE="$3"
+
+    if [ ! -f "$WORK_FILE" ]; then
+        LOG "- Restoring /$PARTITION/$FILE from target firmware"
+        ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "$PARTITION" "$FILE" \
+            0 0 644 "u:object_r:system_file:s0" || \
+            ABORT "Failed to restore target SELinux mapping: /$PARTITION/$FILE"
+        PATCHED=true
+    fi
+
+    if [ ! -s "$WORK_FILE" ]; then
+        ABORT "Missing target SELinux mapping: ${WORK_FILE//$WORK_DIR/}"
+    fi
+}
+
 CIL_NAME="$(head -n 1 "$WORK_DIR/vendor/etc/selinux/plat_sepolicy_vers.txt")"
 PATCHED=false
 if [ "$SOURCE_PLATFORM_SDK_VERSION" -ge "37" ]; then
@@ -66,19 +91,19 @@ VENDOR_API_LIST="$(find "$WORK_DIR/$(GET_SYSTEM_EXT)/etc/selinux/mapping" -type 
 # ]
 
 for e in $ENTRIES; do
-    if grep -q -F "($e)" "$WORK_DIR/$(GET_SYSTEM_EXT)/etc/selinux/mapping/$CIL_NAME.cil" || \
-         grep -q -F "${e}_${CIL_NAME//./_}" "$WORK_DIR/$(GET_SYSTEM_EXT)/etc/selinux/mapping/$CIL_NAME.cil"; then
+    if grep -q -F "($e)" "$WORK_DIR/$SYSTEM_EXT_DIR/etc/selinux/mapping/$CIL_NAME.cil" || \
+         grep -q -F "${e}_${CIL_NAME//./_}" "$WORK_DIR/$SYSTEM_EXT_DIR/etc/selinux/mapping/$CIL_NAME.cil"; then
         # the problematic entry is currently present in system_ext, check if we need to remove it
         if ! grep -q -F "(type $e)" "$WORK_DIR/vendor/etc/selinux/plat_pub_versioned.cil"; then
             PATCHED=true
             # the problematic entry is not supported by the target device
             LOG "- \"$e\" SELinux entry not supported. Removing"
-            sed -i "/($e)/d" "$WORK_DIR/$(GET_SYSTEM_EXT)/etc/selinux/mapping/$CIL_NAME.cil"
+            sed -i "/($e)/d" "$WORK_DIR/$SYSTEM_EXT_DIR/etc/selinux/mapping/$CIL_NAME.cil"
             for a in $VENDOR_API_LIST; do
-                sed -i "/${e}_${a}/d" "$WORK_DIR/$(GET_SYSTEM_EXT)/etc/selinux/mapping/$CIL_NAME.cil"
+                sed -i "/${e}_${a}/d" "$WORK_DIR/$SYSTEM_EXT_DIR/etc/selinux/mapping/$CIL_NAME.cil"
             done
-            if grep -q "genfscon.*$e" "$WORK_DIR/$(GET_SYSTEM_EXT)/etc/selinux/system_ext_sepolicy.cil"; then
-                sed -i "/genfscon.*$e/d" "$WORK_DIR/$(GET_SYSTEM_EXT)/etc/selinux/system_ext_sepolicy.cil"
+            if grep -q "genfscon.*$e" "$WORK_DIR/$SYSTEM_EXT_DIR/etc/selinux/system_ext_sepolicy.cil"; then
+                sed -i "/genfscon.*$e/d" "$WORK_DIR/$SYSTEM_EXT_DIR/etc/selinux/system_ext_sepolicy.cil"
             fi
             if grep -q "genfscon.*$e" "$WORK_DIR/system/system/etc/selinux/plat_sepolicy.cil"; then
                 sed -i "/genfscon.*$e/d" "$WORK_DIR/system/system/etc/selinux/plat_sepolicy.cil"
@@ -88,7 +113,7 @@ for e in $ENTRIES; do
 done
 
 for e in $DUPLICATES; do
-    if grep -q "^$e.*" "$WORK_DIR/$(GET_SYSTEM_EXT)/etc/selinux/system_ext_property_contexts"; then
+    if grep -q "^$e.*" "$WORK_DIR/$SYSTEM_EXT_DIR/etc/selinux/system_ext_property_contexts"; then
         # the problematic entry is currently present in system_ext, check if we need to remove it
         if grep -q "^$e.*" "$WORK_DIR/vendor/etc/selinux/vendor_property_contexts"; then
             PATCHED=true
