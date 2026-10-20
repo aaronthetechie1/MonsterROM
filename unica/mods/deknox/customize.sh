@@ -1,3 +1,8 @@
+if [ "$SOURCE_PLATFORM_SDK_VERSION" = "37" ]; then
+    source "$MODPATH/customize-sdk37.sh"
+    return
+fi
+
 SET_PROP_IF_DIFF "vendor" "ro.security.fips.ux" "Disabled"
 
 if [[ "$TARGET_OS_SINGLE_SYSTEM_IMAGE" == "qssi" ]]; then
