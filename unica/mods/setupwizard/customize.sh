@@ -1,18 +1,26 @@
 DECODE_APK "system" "system/priv-app/SecSetupWizard_Global/SecSetupWizard_Global.apk"
 
+_SETUPWIZARD_APK_DIR="$APKTOOL_DIR/system/priv-app/SecSetupWizard_Global/SecSetupWizard_Global.apk"
+_SETUPWIZARD_LIST_SMALI="$_SETUPWIZARD_APK_DIR/smali/e7/f.smali"
+_SETUPWIZARD_ACTIVITY_SMALI="$_SETUPWIZARD_APK_DIR/smali/com/sec/android/app/SecSetupWizard/SecSetupWizardActivity.smali"
+
 LOG "- Enabling navigation bar type settings step"
-SMALI_PATCH "system" "system/priv-app/SecSetupWizard_Global/SecSetupWizard_Global.apk" \
-    "smali/S2/f.smali" "replace" \
-    "d(Landroid/content/Context;Z)Ljava/util/ArrayList;" \
-    "navigationbar_setting" \
-    "this_string_does_not_exist" \
-    > /dev/null
-SMALI_PATCH "system" "system/priv-app/SecSetupWizard_Global/SecSetupWizard_Global.apk" \
-    "smali/com/sec/android/app/SecSetupWizard/SecSetupWizardActivity.smali" "replace" \
-    "f(Ljava/lang/String;)Z" \
-    "navigationbar_setting" \
-    "this_string_does_not_exist" \
-    > /dev/null
+if grep -q "navigationbar_setting" "$_SETUPWIZARD_LIST_SMALI"; then
+    SMALI_PATCH "system" "system/priv-app/SecSetupWizard_Global/SecSetupWizard_Global.apk" \
+        "smali/e7/f.smali" "replace" \
+        "d(Landroid/content/Context;Z)Ljava/util/ArrayList;" \
+        "navigationbar_setting" \
+        "this_string_does_not_exist" \
+        > /dev/null
+fi
+if grep -q "navigationbar_setting" "$_SETUPWIZARD_ACTIVITY_SMALI"; then
+    SMALI_PATCH "system" "system/priv-app/SecSetupWizard_Global/SecSetupWizard_Global.apk" \
+        "smali/com/sec/android/app/SecSetupWizard/SecSetupWizardActivity.smali" "replace" \
+        "e(Ljava/lang/String;)Z" \
+        "navigationbar_setting" \
+        "this_string_does_not_exist" \
+        > /dev/null
+fi
 
 LOG "- Disabling Recommended apps step"
 EVAL "sed -i \"/omcagent/d\" \"$APKTOOL_DIR/system/priv-app/SecSetupWizard_Global/SecSetupWizard_Global.apk/res/values/arrays.xml\""
@@ -34,6 +42,9 @@ while IFS= read -r f; do
         LOG "- Patching \"$f\" in /system/system/priv-app/SecSetupWizard_Global.apk"
         if [[ "$f" == *"res/values"* ]]; then
             PATCH_INST="/<\/resources>/i"
+            while IFS= read -r RESOURCE_NAME; do
+                EVAL "sed -i \"/name=\\\"$RESOURCE_NAME\\\"/d\" \"$APKTOOL_DIR/system/priv-app/SecSetupWizard_Global/SecSetupWizard_Global.apk/$f\""
+            done < <(sed -n 's/.*name="\([^"]*\)".*/\1/p' "$MODPATH/SecSetupWizard_Global.apk/$f")
             CONTENT="$(sed -e "/?xml/d" -e "/resources>/d" "$MODPATH/SecSetupWizard_Global.apk/$f")"
         else
             PATCH_INST="$(head -n 1 "$MODPATH/SecSetupWizard_Global.apk/$f")"
