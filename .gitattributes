@@ -5,10 +5,23 @@
 
 # Common file extensions
 *.apk binary
+*.apk.* binary
 *.apex binary
+*.apex.* binary
 *.bin binary
 *.so binary
 *.jar binary
+*.jar.* binary
+*.so.* binary
+*.zip binary
+*.gz binary
+*.xz binary
+*.lz4 binary
+*.img binary
+*.dtb binary
+*.dtbo binary
+*.prof binary
+*.o binary
 *.pk8 binary
 *.ogg binary
 *.ico binary
@@ -19,6 +32,7 @@
 
 # ROM-specific prebuilt blobs
 prebuilts/bootable/deprecated-ota/updater binary
+prebuilts/kernel/** binary
 prebuilts/*/*/*/** binary
 unica/mods/paradigm/system/** binary
 unica/mods/prophide/system/bin/rezetprop binary

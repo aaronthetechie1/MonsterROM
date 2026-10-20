@@ -1,0 +1,37 @@
+name: Seventeen source checks
+
+on:
+  push:
+    branches: [seventeen]
+  pull_request:
+    branches: [seventeen]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    name: Exynos 2100 configurations and patch checks
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            *.sh
+            *.py
+            *.patch
+            *.smali
+            *.xml
+            *.prop
+            *.rc
+            *.edify
+            *.json
+            .current
+            /.gitattributes
+            /.gitmodules
+            /.gitignore
+      - name: Check four device configurations and source
+        run: bash scripts/tests/check_exynos2100.sh

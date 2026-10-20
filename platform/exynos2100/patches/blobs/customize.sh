@@ -18,6 +18,7 @@ fi
 
 LOG_STEP_IN "- Adding 32-bit WFD blobs"
 ADD_TO_WORK_DIR "r9sxxx" "system" "system/bin/remotedisplay" 0 2000 755 "u:object_r:remotedisplay_exec:s0"
+LOG_STEP_OUT
 
 LOG_STEP_IN "- Adding HIDL face biometrics libs"
 ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/android.hardware.biometrics.face@1.0.so" 0 0 644 "u:object_r:system_lib_file:s0"
@@ -46,7 +47,8 @@ LOG_STEP_OUT
 
 _BACKPORT_HIDL_ENGMODE_CLIENT()
 {
-    local TARGET_FIRMWARE_DIR="$FW_DIR/$(cut -d "/" -f 1 -s <<< "$TARGET_FIRMWARE")_$(cut -d "/" -f 2 -s <<< "$TARGET_FIRMWARE")"
+    local TARGET_FIRMWARE_DIR
+    TARGET_FIRMWARE_DIR="$FW_DIR/$(cut -d "/" -f 1 -s <<< "$TARGET_FIRMWARE")_$(cut -d "/" -f 2 -s <<< "$TARGET_FIRMWARE")"
     local CURRENT_MANAGER="$WORK_DIR/system/system/lib64/lib.engmode.samsung.so"
     local LEGACY_MANAGER="$TARGET_FIRMWARE_DIR/system/system/lib64/lib.engmode.samsung.so"
     local LEGACY_INTERFACE="$TARGET_FIRMWARE_DIR/system/system/lib64/vendor.samsung.hardware.security.engmode@1.0.so"
@@ -63,14 +65,17 @@ _BACKPORT_HIDL_ENGMODE_CLIENT()
     fi
     if [ ! -f "$LEGACY_MANAGER" ] || [ ! -f "$LEGACY_INTERFACE" ]; then
         ABORT "Target HIDL EngMode client libraries are missing"
+        return 1
     fi
 
     # The source JNI bridge uses the stable EngMode C ABI exposed by this client.
     LOG "- Backporting HIDL EngMode client for the legacy vendor HAL"
     ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "system" "system/lib64/lib.engmode.samsung.so" \
-        0 0 644 "u:object_r:system_lib_file:s0"
+        0 0 644 "u:object_r:system_lib_file:s0" || return 1
     ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "system" \
         "system/lib64/vendor.samsung.hardware.security.engmode@1.0.so" \
-        0 0 644 "u:object_r:system_lib_file:s0"
+        0 0 644 "u:object_r:system_lib_file:s0" || return 1
 }
 
+_BACKPORT_HIDL_ENGMODE_CLIENT || return 1
+unset -f _BACKPORT_HIDL_ENGMODE_CLIENT

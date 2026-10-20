@@ -40,10 +40,12 @@ BUILD_APKS()
 GET_WORK_DIR_HASH()
 {
     if [ "${TARGET_PLATFORM//none/}" ] && [ -d "$SRC_DIR/platform/$TARGET_PLATFORM" ]; then
-        find "$SRC_DIR/unica" "$SRC_DIR/platform/$TARGET_PLATFORM" "$SRC_DIR/target/$TARGET_CODENAME" -type f -print0 | \
+        find "$SRC_DIR/unica" "$SRC_DIR/platform/$TARGET_PLATFORM" "$SRC_DIR/target/$TARGET_CODENAME" \
+            "$SRC_DIR/scripts" "$SRC_DIR/prebuilts" -type f -print0 | \
             sort -z | xargs -0 sha1sum | sha1sum | cut -d " " -f 1
     else
-        find "$SRC_DIR/unica" "$SRC_DIR/target/$TARGET_CODENAME" -type f -print0 | \
+        find "$SRC_DIR/unica" "$SRC_DIR/target/$TARGET_CODENAME" \
+            "$SRC_DIR/scripts" "$SRC_DIR/prebuilts" -type f -print0 | \
             sort -z | xargs -0 sha1sum | sha1sum | cut -d " " -f 1
     fi
 }
@@ -100,11 +102,15 @@ PRINT_USAGE()
 
 PREPARE_SCRIPT "$@"
 
+# Record the inputs at build start. An edit made while building must still
+# trigger the next build, including changes to scripts or prebuilt blobs.
+WORK_DIR_HASH="$(GET_WORK_DIR_HASH)"
+
 if $FORCE; then
     BUILD_ROM=true
 else
     if [ -f "$WORK_DIR/.completed" ]; then
-        if [[ "$(cat "$WORK_DIR/.completed")" == "$(GET_WORK_DIR_HASH)" ]]; then
+        if [[ "$(cat "$WORK_DIR/.completed")" == "$WORK_DIR_HASH" ]]; then
             LOGW "No changes have been detected in the build environment"
             BUILD_ROM=false
         else
@@ -162,7 +168,7 @@ if $BUILD_ROM; then
 
     BUILD_APKS
 
-    echo -n "$(GET_WORK_DIR_HASH)" > "$WORK_DIR/.completed"
+    echo -n "$WORK_DIR_HASH" > "$WORK_DIR/.completed"
 fi
 
 if $BUILD_TARGET_FILES || $BUILD_FLASHABLE_ZIP; then

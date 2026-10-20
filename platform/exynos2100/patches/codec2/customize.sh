@@ -1,16 +1,23 @@
-LOG_STEP_IN "- Applying codec2-patch"
+LOG_STEP_IN "- Adapting Codec2 seccomp policy"
 
 CODEC2_POLICY="$WORK_DIR/vendor/etc/seccomp_policy/samsung.software.media.c2-base-policy"
+SOURCE_RULE="mremap: arg3 == 3"
+TARGET_RULE="mremap: arg3 == 3 || arg3 == MREMAP_MAYMOVE"
 
-if [ -f "$CODEC2_POLICY" ]; then
-    LOG "- Updating mremap rule in $CODEC2_POLICY"
-    # Replace the existing line if present
-    sed -i 's/^mremap: arg3 == 3$/mremap: arg3 == 3 || arg3 == MREMAP_MAYMOVE/' "$CODEC2_POLICY"
+if [ ! -f "$CODEC2_POLICY" ]; then
+    LOGE "Codec2 seccomp policy not found: ${CODEC2_POLICY//$WORK_DIR\//}"
+    return 1
+fi
 
-    # If the line wasn't found, append it
-    if ! grep -q "mremap: arg3 == 3 || arg3 == MREMAP_MAYMOVE" "$CODEC2_POLICY"; then
-        echo "mremap: arg3 == 3 || arg3 == MREMAP_MAYMOVE" >> "$CODEC2_POLICY"
-    fi
+if grep -Fqx "$TARGET_RULE" "$CODEC2_POLICY"; then
+    LOG "- Codec2 mremap rule already supports MREMAP_MAYMOVE"
+elif grep -Fqx "$SOURCE_RULE" "$CODEC2_POLICY"; then
+    LOG "- Allowing MREMAP_MAYMOVE in ${CODEC2_POLICY//$WORK_DIR\//}"
+    sed -i "s/^${SOURCE_RULE}$/${TARGET_RULE}/" "$CODEC2_POLICY"
+else
+    LOGE "Unexpected Codec2 mremap rule in ${CODEC2_POLICY//$WORK_DIR\//}"
+    return 1
 fi
 
 LOG_STEP_OUT
+unset CODEC2_POLICY SOURCE_RULE TARGET_RULE

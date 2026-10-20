@@ -104,9 +104,11 @@ _GET_PROP_LOCATION()
     _CHECK_NON_EMPTY_PARAM "PROP" "$1" || return 1
 
     local PROP="$1"
+    local PROP_RE
+    PROP_RE="$(sed 's/[][\\.*^$/]/\\&/g' <<< "$PROP")"
     local MATCHES=()
     while IFS= read -r f; do
-        if grep -q "^$PROP=" "$f" 2> /dev/null; then
+        if grep -q "^$PROP_RE=" "$f" 2> /dev/null; then
             MATCHES+=("$f")
         fi
     done <<< "$FILES"
@@ -524,8 +526,10 @@ GET_PROP()
     _CHECK_NON_EMPTY_PARAM "PROP" "$1" || return 1
 
     local PROP="$1"
+    local PROP_RE
+    PROP_RE="$(sed 's/[][\\.*^$/]/\\&/g' <<< "$PROP")"
     # shellcheck disable=SC2086
-    cat $FILES 2> /dev/null | sed -n "s/^$PROP=//p" | head -n 1
+    cat $FILES 2> /dev/null | sed -n "s/^$PROP_RE=//p" | head -n 1
 }
 
 # IS_SPARSE_IMAGE <file>
@@ -664,15 +668,20 @@ SET_PROP()
         local FILES
         FILES="$(_GET_PROP_LOCATION "$PARTITION" "$PROP")"
 
+        # Property keys contain dots. Match the literal key and its delimiter
+        # so an update cannot also change a similarly named property.
+        local PROP_RE
+        PROP_RE="$(sed 's/[][\\.*^$/]/\\&/g' <<< "$PROP")"
+
         while IFS= read -r f; do
             if [[ "$VALUE" == "-d" ]] || [[ "$VALUE" == "--delete" ]]; then
                 LOG "- Deleting \"$PROP\" prop in ${f//$WORK_DIR/}"
-                sed -i "/^$PROP/d" "$f"
+                sed -i "/^${PROP_RE}=/d" "$f"
             else
                 LOG "- Replacing \"$PROP\" prop with \"$VALUE\" in ${f//$WORK_DIR/}"
 
                 local LINES
-                LINES="$(sed -n "/^${PROP}\b/=" "$f")"
+                LINES="$(sed -n "/^${PROP_RE}=/=" "$f")"
                 for l in $LINES; do
                     sed -i "$l c${PROP}=${VALUE}" "$f"
                 done

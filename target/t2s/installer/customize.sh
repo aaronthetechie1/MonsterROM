@@ -1,6 +1,3 @@
-# Device-local packaging pins are not part of the generated runtime config.
-source "$SRC_DIR/target/$TARGET_CODENAME/config.sh" || return 1
-
 REPOSITORY="https://github.com/UN1CA/proprietary_vendor_samsung_exynos2100/releases/download"
 TARS=(
     # t2sxxx (eur_open)
@@ -11,32 +8,10 @@ TARS=(
     "G996NKSSCHZA9_KOO_OKR/CP_G996NKOSCHZA5_CP32602497_MQB105441439_REV01_user_low_ship_MULTI_CERT.tar.md5"
 )
 
-if ${TARGET_FIRMWARE_LOCAL_ONLY:-false}; then
-    # Use the same pinned Odin archives as the selected target firmware.
-    # Do not fetch another release asset (or an unselected model variant).
-    TARGET_FIRMWARE_PATH="$(cut -d "/" -f 1 -s <<< "$TARGET_FIRMWARE")_$(cut -d "/" -f 2 -s <<< "$TARGET_FIRMWARE")"
-    TARS=("$TARGET_ODIN_BL_ARCHIVE" "$TARGET_ODIN_CP_ARCHIVE")
-    for i in "${TARS[@]}"; do
-        case "$i" in
-            BL_*) EXPECTED_HASH="$TARGET_ODIN_BL_SHA256" ;;
-            CP_*) EXPECTED_HASH="$TARGET_ODIN_CP_SHA256" ;;
-            *) LOGE "Invalid local target firmware archive: $i"; return 1 ;;
-        esac
-        FILE_PATH="$ODIN_DIR/$TARGET_FIRMWARE_PATH/$i"
-        if [ ! -f "$FILE_PATH" ] || [ "$(sha256sum "$FILE_PATH" | cut -d " " -f 1)" != "$EXPECTED_HASH" ]; then
-            LOGE "Missing or mismatched local target firmware archive: $i"
-            return 1
-        fi
-        LOG "- Adding $i from out/odin/$TARGET_FIRMWARE_PATH"
-        EVAL "cp -a \"$FILE_PATH\" \"$TMP_DIR/$i\"" || return 1
-    done
-    unset EXPECTED_HASH FILE_PATH
-else
-    for i in "${TARS[@]}"; do
-        LOG "- Downloading $(basename "$i")"
-        DOWNLOAD_FILE "$REPOSITORY/$i" "$TMP_DIR/$(basename "$i")" || return 1
-    done
-fi
+for i in "${TARS[@]}"; do
+    LOG "- Downloading $(basename "$i")"
+    DOWNLOAD_FILE "$REPOSITORY/$i" "$TMP_DIR/$(basename "$i")" || return 1
+done
 
 while IFS= read -r f; do
     FILE_NAME="$(basename "$f")"
