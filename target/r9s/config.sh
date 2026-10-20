@@ -7,7 +7,9 @@ TARGET_CODENAME="r9s"
 TARGET_ASSERT_MODEL=("SM-G990E")
 TARGET_PLATFORM="exynos2100"
 TARGET_FIRMWARE="SM-G990E/THL/355798871234563"
-TARGET_EXTRA_FIRMWARES=()
+# Matched API30 System ABI providers for the full runtime's private namespaces.
+# Camera, DRK, vendor drivers and tuning still come from SM-G990E itself.
+TARGET_EXTRA_FIRMWARES=("SM-G996B/AUT/355399273736683")
 TARGET_PLATFORM_SDK_VERSION=36
 
 # Dynamic partitions
