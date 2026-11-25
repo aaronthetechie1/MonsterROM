@@ -1,23 +1,23 @@
 # MonsterROM_NEXT
 
-MonsterROM_NEXT brings the Galaxy S26+ One UI 9.5 beta to the Exynos Galaxy S21+ using UN1CA's partition and patch layout. The first target is the international **SM-G996B** (`t2s`).
+MonsterROM_NEXT brings the Galaxy S26+ One UI 9.5 beta to the Exynos Galaxy S21 and S21+ using UN1CA's partition and patch layout. Supported targets are the international **SM-G991B** (`o1s`) and **SM-G996B** (`t2s`).
 
 | Input | Device | Build |
 | --- | --- | --- |
 | One UI 9.5 system, system_ext and product | Galaxy S26+ SM-S947B, EUX (`m2s`) | `S947BXXS6BZK1` stock plus the `S947BXXU6ZZKN` incremental OTA |
-| Vendor, ODM and target hardware files | Galaxy S21+ SM-G996B, AUT (`t2s`) | `G996BXXSJHZC2` |
-| ARM32 native libraries for legacy services | Galaxy S21 FE SM-G990E, THL (`r9s`) | `G990EXXSOHZH4` |
+| Vendor, ODM and target hardware files | Galaxy S21 SM-G991B, AUT (`o1s`) / Galaxy S21+ SM-G996B, AUT (`t2s`) | `G991BXXSJHZC2` / `G996BXXSJHZC2` |
+| ARM32 native libraries for legacy services | Galaxy S21 FE SM-G990E, THL (`r9s`) | `G990EXXSOHZH4` / `G990EXXSPHZK2` |
 
-The donor runs Android 17. The S21+ uses its own hardware services, partition sizes and recovery model check. Device-specific patches live under `target/t2s`, with Exynos 2100 changes under `platform/exynos2100`. Framework changes use the upstream smali patch format.
+The donor runs Android 17. Each target uses its own hardware services, partition sizes and recovery model check. Device-specific patches live under `target/o1s` and `target/t2s`, with Exynos 2100 changes under `platform/exynos2100`. Framework changes use the upstream smali patch format.
 
 ## Building
 
 The build creates private platform, APEX and fs-verity signing keys under `~/.local/share/MonsterROM_NEXT/keys` on first use. Set `MONSTERROM_KEY_DIR` before the first build to choose a different persistent directory. Back up that directory privately and reuse it for subsequent builds and app updates.
 
-Use a Linux filesystem and UN1CA's build dependencies, plus `fsverity`, `protobuf-compiler` and `python3-protobuf`. The S26+ beta is an incremental update and requires the matching stock images. The build expects the resulting firmware tree under `out/fw/SM-S947B_EUX`. The stock target and native-library donor use `out/fw/SM-G996B_AUT` and `out/fw/SM-G990E_THL`.
+Use a Linux filesystem and UN1CA's build dependencies, plus `fsverity`, `protobuf-compiler` and `python3-protobuf`. The S26+ beta is an incremental update and requires the matching stock images. The build expects the resulting firmware tree under `out/fw/SM-S947B_EUX`. The stock target and native-library donor use `out/fw/SM-G991B_AUT` (for `o1s`) or `out/fw/SM-G996B_AUT` (for `t2s`) and `out/fw/SM-G990E_THL`.
 
 ```bash
-source buildenv.sh t2s
+source buildenv.sh o1s # or t2s
 prebuilts/samsung/m2sxxx/import-ota.sh /path/to/BZK1-stock.zip /path/to/BZK1-to-ZZKN.zip
 run_cmd make_rom -z
 ```
