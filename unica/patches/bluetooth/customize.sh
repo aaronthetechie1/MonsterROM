@@ -247,7 +247,7 @@ else
     fi
 fi
 
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     # The S21+ exposes ISehVaultKeeper through HIDL 2.0. Keep the beta Bluetooth JNI.
     TARGET_LIB64="$FW_DIR/${TARGET_FIRMWARE%%/*}_$(cut -d / -f 2 <<< "$TARGET_FIRMWARE")/system/system/lib64"
     PAYLOAD="$TMP_DIR/unknown/apex_payload"

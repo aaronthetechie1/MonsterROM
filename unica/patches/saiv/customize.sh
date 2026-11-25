@@ -39,7 +39,7 @@ fi
 # SEC_PRODUCT_FEATURE_GALLERY_CONFIG_IMAGE_TAGGER_VERSION
 SOURCE_GALLERY_CONFIG_IMAGE_TAGGER_VERSION="$(GET_FLOATING_FEATURE_CONFIG "$FW_DIR/$SOURCE_FIRMWARE_PATH/system/system/etc/floating_feature.xml" "SEC_FLOATING_FEATURE_GALLERY_CONFIG_IMAGE_TAGGER_VERSION")"
 TARGET_GALLERY_CONFIG_IMAGE_TAGGER_VERSION="$(GET_FLOATING_FEATURE_CONFIG "$FW_DIR/$TARGET_FIRMWARE_PATH/system/system/etc/floating_feature.xml" "SEC_FLOATING_FEATURE_GALLERY_CONFIG_IMAGE_TAGGER_VERSION")"
-if [[ "$TARGET_CODENAME" == "t2s" ]] && [[ "$SOURCE_GALLERY_CONFIG_IMAGE_TAGGER_VERSION" == "V1102" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]] && [[ "$SOURCE_GALLERY_CONFIG_IMAGE_TAGGER_VERSION" == "V1102" ]]; then
     # Gallery V1102 and the beta Photo Editor share the S26+ model manifests.
     ADD_TO_WORK_DIR "$SOURCE_FIRMWARE" "system" "system/saiv"
     for MODEL in hs_segmenter aic_pet_detector slens_classifier slens_detector doc_rectifier SS_segmenter; do

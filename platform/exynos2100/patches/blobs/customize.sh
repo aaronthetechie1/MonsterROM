@@ -1,7 +1,7 @@
 LOG_STEP_IN "- Adding OK Google Hotword Enrollment blobs"
 DELETE_FROM_WORK_DIR "product" "priv-app/HotwordEnrollmentOKGoogleEx4CORTEXM55"
 DELETE_FROM_WORK_DIR "product" "priv-app/HotwordEnrollmentXGoogleEx4CORTEXM55"
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     DELETE_FROM_WORK_DIR "product" "priv-app/HotwordEnrollmentXGoogleEx6_WIDEBAND_LARGE"
     DELETE_FROM_WORK_DIR "product" "priv-app/HotwordEnrollmentYGoogleEx6_WIDEBAND_LARGE"
 fi
@@ -53,7 +53,7 @@ DELETE_FROM_WORK_DIR "system" "system/lib64/wfd_log.so"
 LOG_STEP_OUT
 
 ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libhwui.so" 0 0 644 "u:object_r:system_lib_file:s0"
-if [[ "$TARGET_CODENAME" != "t2s" ]]; then
+if [[ "$TARGET_CODENAME" != "t2s" && "$TARGET_CODENAME" != "o1s" ]]; then
     ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib64/libhwui.so" 0 0 644 "u:object_r:system_lib_file:s0"
 fi
 

@@ -64,7 +64,6 @@
             <GDMLTB formula="SKIN*BAT" temp="435.435" />
             <GDM formula="SKIN*BAT"    temp="420.420" />
             <SS  formula="SKIN*BAT"   temp="530.480" />
-            <DEX formula="LRP2"       temp="470" />
         </complex>
     </overheatcontrol>
 
@@ -108,16 +107,16 @@
             <limiter name="CameraOverheatLevel" temp="350:370:390:410:430:450:460"             value="-1:1:2:3:4:5:6" />
         </component>
 
+        <component name="DEX" tempType="LRP2">
+            <limiter name="CPUFreqMax" temp="470" value="-1:533000" />
+        </component>
+
         <component name="AP+DISPLAY" tempType="SKIN" >
             <limiter name="AppInstallDelay" temp="320:340:400:420" value="-1:10000:10000:30000" />
         </component>
 
         <component name="CHG+DISPLAY" tempType="CHG2+MEM2">
             <limiter name="Charging" temp="360.360:380.380" value="-1:80" />
-        </component>
-
-        <component name="WIFI" tempType="SKIN">
-            <limiter name="WifiTput"    tempType="SKIN" temp="450" p="50" i="2" d="50" unit="0.1" min="200" />
         </component>
 
     </components>

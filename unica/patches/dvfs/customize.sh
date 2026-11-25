@@ -4,7 +4,7 @@ if [[ "$SOURCE_DVFSAPP_CONFIG_DVFS_POLICY_FILENAME" == "$TARGET_DVFSAPP_CONFIG_D
     return 0
 fi
 
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     DVFS_CONFIG_CLASS="smali/d4/c.smali"
     DVFS_READER_CLASS="smali/l4/e.smali"
     SIOP_CONFIG_CLASS="smali/o5/i0.smali"

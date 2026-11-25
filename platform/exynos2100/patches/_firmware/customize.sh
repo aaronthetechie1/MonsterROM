@@ -1,4 +1,4 @@
-if [[ "$TARGET_CODENAME" != "t2s" ]]; then
+if [[ "$TARGET_CODENAME" != "t2s" && "$TARGET_CODENAME" != "o1s" ]]; then
     return 0
 fi
 
@@ -21,10 +21,17 @@ for PARTITION in system system_ext product; do
     CHECK_FW_PROP "$PARTITION" "ro.$PARTITION.build.version.incremental" "S947BXXU6ZZKN"
 done
 
+EXPECTED_TARGET_MODEL="SM-G996B"
+EXPECTED_TARGET_INC="G996BXXSJHZC2"
+if [[ "$TARGET_CODENAME" == "o1s" ]]; then
+    EXPECTED_TARGET_MODEL="SM-G991B"
+    EXPECTED_TARGET_INC="G991BXXSJHZC2"
+fi
 for PARTITION in vendor odm; do
-    CHECK_FW_PROP "$PARTITION" "ro.product.$PARTITION.model" "SM-G996B"
-    CHECK_FW_PROP "$PARTITION" "ro.$PARTITION.build.version.incremental" "G996BXXSJHZC2"
+    CHECK_FW_PROP "$PARTITION" "ro.product.$PARTITION.model" "$EXPECTED_TARGET_MODEL"
+    CHECK_FW_PROP "$PARTITION" "ro.$PARTITION.build.version.incremental" "$EXPECTED_TARGET_INC"
 done
+unset EXPECTED_TARGET_MODEL EXPECTED_TARGET_INC
 
 # Android keeps an explicit ro.product.device ahead of the partition fallback order.
 SET_PROP "system" "ro.product.device" "$(GET_PROP "odm" "ro.product.odm.device")"

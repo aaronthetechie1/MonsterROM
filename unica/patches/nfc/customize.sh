@@ -15,7 +15,7 @@ else
     DELETE_FROM_WORK_DIR "system" "system/etc/libnfc-nci_temp.conf"
 fi
 
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     # The beta NFC APEX contains its own JNI and the HIDL 1.2 client.
     if [ ! -f "$WORK_DIR/system/system/apex/com.android.nfcservices.capex" ] || \
             ! grep -Fq '<name>INfc</name>' "$WORK_DIR/vendor/etc/vintf/manifest/nxp.android.hardware.nfc@1.2-service.xml"; then

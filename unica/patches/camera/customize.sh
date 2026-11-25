@@ -103,7 +103,7 @@ if ! grep -q "ENABLE_SINGLE_TAKE_LITE.*true" "$WORK_DIR/system/system/cameradata
             ADD_TO_WORK_DIR "$SOURCE_FIRMWARE" "vendor" \
                 "etc/singletake/SmartCrop/SmartCrop.tflite" 0 0 644 "u:object_r:vendor_configs_file:s0"
         fi
-    elif [[ "$TARGET_CODENAME" == "t2s" ]] && [ -f "$WORK_DIR/vendor/etc/singletake/SmartCrop/SmartCrop.tflite" ]; then
+    elif [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]] && [ -f "$WORK_DIR/vendor/etc/singletake/SmartCrop/SmartCrop.tflite" ]; then
         DECODE_APK "system" "system/priv-app/SingleTakeService/SingleTakeService.apk"
         SMART_CROP_READER="$APKTOOL_DIR/system/priv-app/SingleTakeService/SingleTakeService.apk/lib/arm64-v8a/libfixsal.so"
         # SaliencySnapOps::openSnapSession stores the model type before opening SNAP.

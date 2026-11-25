@@ -1,5 +1,5 @@
 CORE_RUNE_DEX="smali_classes6"
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     CORE_RUNE_DEX="smali_classes5"
 else
     SET_PROP_IF_DIFF "vendor" "ro.oem_unlock_supported" "0"
@@ -26,7 +26,7 @@ SMALI_PATCH "system" "system/framework/services.jar" \
 
 unset CORE_RUNE_DEX
 
-if [[ "$TARGET_CODENAME" != "t2s" ]]; then
+if [[ "$TARGET_CODENAME" != "t2s" && "$TARGET_CODENAME" != "o1s" ]]; then
     # shellcheck disable=SC2016
     # Disable RescueParty
     SMALI_PATCH "system" "system/framework/services.jar" \

@@ -3,7 +3,7 @@
 
 # UN1CA configuration file for Exynos devices (essi)
 
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     source "$SRC_DIR/unica/configs/m2s.sh" || return 1
     return 0
 fi

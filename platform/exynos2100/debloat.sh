@@ -24,7 +24,7 @@ SYSTEM_DEBLOAT+="
 system/priv-app/GameDriver-EX2200
 "
 
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     SYSTEM_DEBLOAT+="
 system/priv-app/DevGPUDriver-EX2600
 system/priv-app/GameDriver-EX2600

@@ -5,7 +5,7 @@ fi
 
 # [
 ADD_TARGET_VNDK_APEX() {
-    if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+    if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
         ADD_TO_WORK_DIR "$TARGET_FIRMWARE" "system_ext" "apex/com.android.vndk.v$TARGET_BOARD_API_LEVEL.apex" \
             0 0 644 "u:object_r:system_file:s0"
         return $?

@@ -7,7 +7,7 @@ for FILE in system/etc/ringtones_count_list.txt system/media/audio/ringtones sys
 done
 unset FILE
 
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     APPLY_PATCH "system" "system/priv-app/SecSoundPicker/SecSoundPicker.apk" \
         "$MODPATH/brandsound/SecSoundPicker.apk/0001-Enable-SUPPORT_SAMSUNG_BRAND_SOUND_ONEUI_7.patch"
 fi

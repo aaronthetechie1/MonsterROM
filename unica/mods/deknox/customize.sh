@@ -15,7 +15,7 @@ for PACKAGE in com.samsung.android.coldwalletservice com.samsung.android.hdmapp 
         fi
     done
 
-    if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+    if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
         # ZZKN also merges per-package declarations into shared system XML files.
         PACKAGE_PATTERN="${PACKAGE//./[.]}"
         sed -i "\@<install-in-user-type package=\"$PACKAGE_PATTERN\">@,\@</install-in-user-type>@d" \
@@ -29,7 +29,7 @@ for PACKAGE in com.samsung.android.coldwalletservice com.samsung.android.hdmapp 
     fi
 done
 
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     SET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_FRAMEWORK_SUPPORT_BLOCKCHAIN_SERVICE" --delete
     APPLY_PATCH "system" "system/framework/framework.jar" \
         "$MODPATH/blockchain/framework.jar/0001-Remove-the-BlockchainBasicKit-feature-flag.patch"

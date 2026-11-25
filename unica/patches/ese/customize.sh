@@ -1,7 +1,7 @@
 SYSTEM_CONFIG_DEX="smali"
 CREDENTIAL_MANAGER_DEX="smali_classes2"
 SEM_SERVICE_MANAGER="smali_classes6/com/samsung/android/service/SemService/SemServiceManager.smali"
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     SYSTEM_CONFIG_DEX="smali_classes2"
     CREDENTIAL_MANAGER_DEX="smali_classes3"
     SEM_SERVICE_MANAGER="smali_classes7/com/samsung/android/service/SemService/SemServiceManager.smali"
@@ -99,7 +99,7 @@ if [[ "$SOURCE_SECURITY_CONFIG_ESE_CHIP_VENDOR" != "none" ]] && [[ "$SOURCE_SECU
     fi
     if [[ "$SOURCE_SECURITY_CONFIG_ESE_COS_NAME" != "$TARGET_SECURITY_CONFIG_ESE_COS_NAME" ]]; then
         ESE_COS_PREFIX=""
-        [[ "$TARGET_CODENAME" != "t2s" ]] || ESE_COS_PREFIX=", eSE_COS: "
+        [[ "$TARGET_CODENAME" != "t2s" && "$TARGET_CODENAME" != "o1s" ]] || ESE_COS_PREFIX=", eSE_COS: "
         SMALI_PATCH "system" "system/app/SecureElement/SecureElement.apk" \
             "smali/com/android/se/internal/UtilExtension.smali" "replace" \
             "supportEseHal()Z" \

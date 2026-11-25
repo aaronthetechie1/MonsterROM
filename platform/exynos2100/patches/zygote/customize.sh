@@ -1,4 +1,4 @@
-if [[ "$TARGET_CODENAME" != "t2s" ]]; then
+if [[ "$TARGET_CODENAME" != "t2s" && "$TARGET_CODENAME" != "o1s" ]]; then
     return 0
 fi
 

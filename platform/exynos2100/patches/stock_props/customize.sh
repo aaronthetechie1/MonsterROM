@@ -1,4 +1,4 @@
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     SET_PROP "system" "debug.codec2.stop_hal_before_surface" "1"
     SET_PROP "system" "ro.audio.spatializer_enabled" "true"
     SET_PROP "vendor" "ro.sf.init.lcd_density" "$(GET_PROP "vendor" "ro.sf.lcd_density")"

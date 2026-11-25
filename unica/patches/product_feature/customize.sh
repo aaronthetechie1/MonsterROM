@@ -25,7 +25,7 @@ LOG_MISSING_PATCHES()
 # ]
 
 # SEC_PRODUCT_FEATURE_BUILD_MAINLINE_API_LEVEL
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     # The beta probes HDM and DDAR through ServiceManager. Its UCM adapter still needs
     # the matching vendor transport and JNI library.
     APPLY_PATCH "system" "system/framework/esecomm.jar" \
@@ -83,7 +83,7 @@ elif [[ "$SOURCE_PRODUCT_SHIPPING_API_LEVEL" != "$TARGET_PRODUCT_SHIPPING_API_LE
 fi
 
 # SEC_PRODUCT_FEATURE_AUDIO_CONFIG_RECORDALIVE_LIB_VERSION
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     APPLY_PATCH "system" "system/framework/framework.jar" \
         "$MODPATH/audio/recordalive/framework.jar/0001-Match-the-t2s-RecordAlive-microphone-modes.patch"
 elif [[ "$SOURCE_AUDIO_CONFIG_RECORDALIVE_LIB_VERSION" != "$TARGET_AUDIO_CONFIG_RECORDALIVE_LIB_VERSION" ]]; then
@@ -105,7 +105,7 @@ elif [[ "$SOURCE_AUDIO_CONFIG_RECORDALIVE_LIB_VERSION" != "$TARGET_AUDIO_CONFIG_
 fi
 
 # SEC_PRODUCT_FEATURE_AUDIO_CONFIG_HAPTIC
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     APPLY_PATCH "system" "system/framework/framework.jar" \
         "$MODPATH/audio/ach/framework.jar/0002-Use-the-t2s-ringtone-haptic-capabilities.patch"
 elif $SOURCE_AUDIO_SUPPORT_ACH_RINGTONE; then
@@ -138,7 +138,7 @@ else
 fi
 
 # SEC_PRODUCT_FEATURE_AUDIO_SUPPORT_VIRTUAL_VIBRATION_SOUND
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     APPLY_PATCH "system" "system/framework/framework.jar" \
         "$MODPATH/audio/virtual_vib/framework.jar/0003-Match-the-G996B-physical-vibrator.patch"
     APPLY_PATCH "system" "system/framework/services.jar" \
@@ -184,7 +184,7 @@ if [[ "$SOURCE_COMMON_CONFIG_MDNIE_MODE" != "$TARGET_COMMON_CONFIG_MDNIE_MODE" ]
 fi
 
 # SEC_PRODUCT_FEATURE_COMMON_CONFIG_DYN_RESOLUTION_CONTROL
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     SET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_COMMON_CONFIG_DYN_RESOLUTION_CONTROL" --delete
 
     APPLY_PATCH "system" "system/framework/framework.jar" \
@@ -496,7 +496,7 @@ if [[ "$SOURCE_LCD_CONFIG_CONTROL_AUTO_BRIGHTNESS" != "$TARGET_LCD_CONFIG_CONTRO
         "$TARGET_LCD_CONFIG_CONTROL_AUTO_BRIGHTNESS"
 fi
 
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     SET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_LCD_CONFIG_HFR_MODE" "$TARGET_LCD_CONFIG_HFR_MODE"
     SET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_LCD_CONFIG_HFR_SUPPORTED_REFRESH_RATE" "$TARGET_LCD_CONFIG_HFR_SUPPORTED_REFRESH_RATE"
     SET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_LCD_CONFIG_HFR_SUPPORTED_REFRESH_RATE_NS" "$TARGET_LCD_CONFIG_HFR_SUPPORTED_REFRESH_RATE_NS"
@@ -548,7 +548,7 @@ else
 fi
 
 # SEC_PRODUCT_FEATURE_RIL_FEATURES
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     SMALI_PATCH "system" "system/framework/framework.jar" \
         "smali_classes4/com/android/internal/telephony/TelephonyFeatures.smali" "replaceall" \
         "$SOURCE_RIL_FEATURES" "$TARGET_RIL_FEATURES"
@@ -624,7 +624,7 @@ fi
 # SEC_PRODUCT_FEATURE_WLAN_CONFIG_CPU_CSTATE_DISABLE_THRESHOLD
 # SEC_PRODUCT_FEATURE_WLAN_CONFIG_DATA_ACTIVITY_AFFINITY_BOOSTER_THRESHOLD
 # SEC_PRODUCT_FEATURE_WLAN_CONFIG_L1SS_DISABLE_THRESHOLD
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     APPLY_PATCH "system" "system/framework/semwifi-service.jar" \
         "$MODPATH/wifi/thresholds/semwifi-service.jar/0001-Use-the-G996B-radio-booster-thresholds.patch"
 elif [[ "$SOURCE_WLAN_CONFIG_CPU_CSTATE_DISABLE_THRESHOLD" != "$TARGET_WLAN_CONFIG_CPU_CSTATE_DISABLE_THRESHOLD" ]] || \
@@ -662,7 +662,7 @@ elif [[ "$SOURCE_WLAN_CONFIG_CPU_CSTATE_DISABLE_THRESHOLD" != "$TARGET_WLAN_CONF
 fi
 
 # SEC_PRODUCT_FEATURE_WLAN_CONFIG_CUSTOM_BACKOFF
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     APPLY_PATCH "system" "system/framework/semwifi-service.jar" \
         "$MODPATH/wifi/custom_backoff/semwifi-service.jar/0003-Use-the-G996B-coexistence-configuration.patch"
 elif [[ "$SOURCE_WLAN_CONFIG_CUSTOM_BACKOFF" != "$TARGET_WLAN_CONFIG_CUSTOM_BACKOFF" ]]; then
@@ -707,7 +707,7 @@ fi
 
 # SEC_PRODUCT_FEATURE_WLAN_SUPPORT_80211AX
 # SEC_PRODUCT_FEATURE_WLAN_SUPPORT_80211AX_6GHZ
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     APPLY_PATCH "system" "system/framework/semwifi-service.jar" \
         "$MODPATH/wifi/80211ax_6ghz/semwifi-service.jar/0004-Advertise-the-G996B-Wi-Fi-6-bands.patch"
 elif $SOURCE_WLAN_SUPPORT_80211AX; then
@@ -758,7 +758,7 @@ fi
 # SEC_PRODUCT_FEATURE_WLAN_SUPPORT_APE_SERVICE
 # SEC_PRODUCT_FEATURE_WLAN_CONFIG_CONNECTION_PERSONALIZATION
 # SEC_PRODUCT_FEATURE_WLAN_CONFIG_DYNAMIC_SWITCH
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     APPLY_PATCH "system" "system/framework/semwifi-service.jar" \
         "$MODPATH/wifi/connection_personalization/semwifi-service.jar/0006-Use-the-G996B-connection-optimizer.patch"
 elif [[ "$SOURCE_WLAN_CONFIG_CONNECTION_PERSONALIZATION" != "$TARGET_WLAN_CONFIG_CONNECTION_PERSONALIZATION" ]] || \
@@ -869,7 +869,7 @@ else
 fi
 
 # SEC_PRODUCT_FEATURE_WLAN_SUPPORT_MOBILEAP_5G_BASEDON_COUNTRY
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     APPLY_PATCH "system" "system/framework/semwifi-service.jar" \
         "$MODPATH/wifi/5g_basedon_country/semwifi-service.jar/0002-Require-declared-chip-support-for-5-GHz-hotspot.patch"
 elif ! $SOURCE_WLAN_SUPPORT_MOBILEAP_5G_BASEDON_COUNTRY; then
@@ -914,7 +914,7 @@ elif $SOURCE_WLAN_SUPPORT_MOBILEAP_6G && ! $TARGET_WLAN_SUPPORT_MOBILEAP_6G; the
 fi
 
 # SEC_PRODUCT_FEATURE_WLAN_SUPPORT_MOBILEAP_DUALAP
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     APPLY_PATCH "system" "system/framework/semwifi-service.jar" \
         "$MODPATH/wifi/dualap/semwifi-service.jar/0007-Expose-the-hotspot-modes-supported-by-t2s.patch"
     APPLY_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
@@ -956,7 +956,7 @@ else
 fi
 
 # SEC_PRODUCT_FEATURE_WLAN_SUPPORT_MOBILEAP_OWE
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     SMALI_PATCH "system" "system/framework/semwifi-service.jar" \
         "smali/com/samsung/android/server/wifi/ap/SemSoftApConfiguration.smali" "replaceall" \
         "SPF_OWE=true" "SPF_OWE=false"
@@ -1071,7 +1071,7 @@ fi
 
 # SEC_PRODUCT_FEATURE_WLAN_SUPPORT_TWT_CONTROL
 # SEC_PRODUCT_FEATURE_WLAN_SUPPORT_LOWLATENCY
-if [[ "$TARGET_CODENAME" == "t2s" ]]; then
+if [[ "$TARGET_CODENAME" == "t2s" || "$TARGET_CODENAME" == "o1s" ]]; then
     APPLY_PATCH "system" "system/framework/semwifi-service.jar" \
         "$MODPATH/wifi/twt_control/semwifi-service.jar/0005-Use-the-G996B-Wi-Fi-driver-feature-defaults.patch"
 elif $SOURCE_WLAN_SUPPORT_TWT_CONTROL && $SOURCE_WLAN_SUPPORT_LOWLATENCY; then

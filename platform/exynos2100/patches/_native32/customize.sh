@@ -1,11 +1,13 @@
-if [[ "$TARGET_CODENAME" != "t2s" ]]; then
+if [[ "$TARGET_CODENAME" != "t2s" && "$TARGET_CODENAME" != "o1s" ]]; then
     return 0
 fi
 
 NATIVE32_FW="$FW_DIR/SM-G990E_THL"
-if [[ "$(GET_PROP "$NATIVE32_FW/system/system/build.prop" "ro.build.version.incremental")" != "G990EXXSOHZH4" ]]; then
-    ABORT "Expected G990EXXSOHZH4 for the ARM32 vendor runtime"
+NATIVE32_INC="$(GET_PROP "$NATIVE32_FW/system/system/build.prop" "ro.build.version.incremental")"
+if [[ "$NATIVE32_INC" != "G990EXXSOHZH4" && "$NATIVE32_INC" != "G990EXXSPHZK2" ]]; then
+    ABORT "Expected G990EXXSOHZH4 or G990EXXSPHZK2 for the ARM32 vendor runtime (found ${NATIVE32_INC:-<missing>})"
 fi
+unset NATIVE32_INC
 
 # Apply the base libraries before the platform's audio, camera and WFD replacements.
 # The donor's module symlink belongs to its kernel partition layout.
