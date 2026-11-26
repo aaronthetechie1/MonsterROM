@@ -1,0 +1,73 @@
+diff --git a/kernel/hook/patch_memory.c b/kernel/hook/patch_memory.c
+index d9e40cc..6a49a98 100644
+--- a/kernel/hook/patch_memory.c
++++ b/kernel/hook/patch_memory.c
+@@ -10,10 +10,6 @@
+ 
+ // copy_to_kernel_nofault() was introduced in 5.8; before that it was
+ // named probe_kernel_write()
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
+-#define copy_to_kernel_nofault(dst, src, size)                                 \
+-	probe_kernel_write((dst), (src), (size))
+-#endif
+ 
+ #if defined(__aarch64__)
+ 
+@@ -63,7 +59,7 @@ unsigned long phys_from_virt(unsigned long addr, int *err)
+         goto fail;
+     pr_debug("p4d of 0x%lx p=0x%lx v=0x%lx", addr, (uintptr_t)p4d,
+              (uintptr_t)p4d_val(*p4d));
+-#if defined(p4d_leaf)
++#if defined(p4d_leaf) && defined(__p4d_to_phys)
+     if (p4d_leaf(*p4d)) {
+         pr_debug("Address 0x%lx maps to a P4D-level huge page\n", addr);
+         return __p4d_to_phys(*p4d) + ((addr & ~P4D_MASK));
+@@ -335,7 +331,7 @@ unsigned long phys_from_virt(unsigned long addr, int *err)
+         goto fail;
+     pr_debug("p4d of 0x%lx p=0x%lx v=0x%lx", addr, (uintptr_t)p4d,
+              (uintptr_t)p4d_val(*p4d));
+-#if defined(p4d_leaf)
++#if defined(p4d_leaf) && defined(__p4d_to_phys)
+     if (p4d_leaf(*p4d)) {
+         pr_debug("Address 0x%lx maps to a P4D-level huge page\n", addr);
+         return KSU_P4D_TO_PHYS(*p4d) + ((addr & ~P4D_MASK));
+diff --git a/kernel/runtime/ksud_integration.c b/kernel/runtime/ksud_integration.c
+index 05b6b33..4c5f199 100644
+--- a/kernel/runtime/ksud_integration.c
++++ b/kernel/runtime/ksud_integration.c
+@@ -490,7 +490,10 @@ static ssize_t read_iter_proxy(struct kiocb *iocb, struct iov_iter *to)
+ 		goto append_module_rc;
+ 
+ 	ret = orig_read_iter(iocb, to);
+-	if (ret != 0) {
++	if (ret < 0) {
++		return ret;
++	}
++	if (ret > 0 && (iocb->ki_pos < i_size_read(file_inode(iocb->ki_filp)) || iov_iter_count(to) == 0)) {
+ 		return ret;
+ 	}
+ 	if (ksu_rc_pos >= ksu_rc_len && module_rc_pos >= (ssize_t)module_rc_len) {
+diff --git a/kernel/supercall/supercall.c b/kernel/supercall/supercall.c
+index 1bfa995..5bc506d 100644
+--- a/kernel/supercall/supercall.c
++++ b/kernel/supercall/supercall.c
+@@ -1,3 +1,6 @@
++#include "selinux/selinux.h"
++#include "manager/manager_identity.h"
++#include "manager/throne_tracker.h"
+ #include <linux/anon_inodes.h>
+ #include <linux/err.h>
+ #include <linux/fdtable.h>
+@@ -109,6 +112,12 @@ bool ksu_is_su_session_fd(const struct file *filp)
+ static void ksu_install_fd_tw_func(struct callback_head *cb)
+ {
+     struct ksu_install_fd_tw *tw = container_of(cb, struct ksu_install_fd_tw, cb);
++    if (!ksu_is_manager_appid_valid()) {
++        apply_kernelsu_rules();
++        cache_sid();
++        setup_ksu_cred();
++        track_throne(false);
++    }
+     int fd = ksu_install_fd();
+ 
+     pr_info("[%d] install ksu fd: %d\n", current->pid, fd);
