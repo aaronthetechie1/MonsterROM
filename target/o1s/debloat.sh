@@ -9,6 +9,7 @@
 # Overlays
 SYSTEM_DEBLOAT+="
 system/app/WifiRROverlayAppH2E
+system/priv-app/CIDManager
 "
 
 # S26 product overlays for Wi-Fi features absent on the S21.
