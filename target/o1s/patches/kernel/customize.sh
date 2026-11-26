@@ -15,13 +15,9 @@ EVAL "rm -rf \"$KERNEL_DIR\""
 unset KERNEL_DIR
 
 if [ -f "$MODPATH/KernelSU_Next.apk" ]; then
-    LOG "- Preloading KernelSU Next Manager"
-    mkdir -p "$WORK_DIR/system/system/preload/KernelSU_Next"
-    EVAL "cp -a \"$MODPATH/KernelSU_Next.apk\" \"$WORK_DIR/system/system/preload/KernelSU_Next/KernelSU_Next.apk\""
-    SET_METADATA "system" "system/preload/KernelSU_Next" 0 0 755 "u:object_r:system_file:s0"
-    SET_METADATA "system" "system/preload/KernelSU_Next/KernelSU_Next.apk" 0 0 644 "u:object_r:system_file:s0"
-    if ! grep -q "system/preload/KernelSU_Next/KernelSU_Next.apk" "$WORK_DIR/system/system/etc/vpl_apks_count_list.txt"; then
-        LOG "- Adding \"system/preload/KernelSU_Next/KernelSU_Next.apk\" to /system/system/etc/vpl_apks_count_list.txt"
-        EVAL "echo \"system/preload/KernelSU_Next/KernelSU_Next.apk\" >> \"$WORK_DIR/system/system/etc/vpl_apks_count_list.txt\""
-    fi
+    LOG "- Installing KernelSU Next Manager"
+    mkdir -p "$WORK_DIR/system/system/app/KernelSU_Next"
+    EVAL "cp -a \"$MODPATH/KernelSU_Next.apk\" \"$WORK_DIR/system/system/app/KernelSU_Next/KernelSU_Next.apk\""
+    SET_METADATA "system" "system/app/KernelSU_Next" 0 0 755 "u:object_r:system_file:s0"
+    SET_METADATA "system" "system/app/KernelSU_Next/KernelSU_Next.apk" 0 0 644 "u:object_r:system_file:s0"
 fi

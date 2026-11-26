@@ -368,7 +368,7 @@ for name in targets:
     for i in range(e_shnum):
         off = e_shoff + i * e_shentsize
         sh_name, sh_type, sh_flags, _, sh_offset, sh_size = struct.unpack_from("<IIQQQQ", data, off)
-        sname = shstr[sh_name:shstr.find(b" ", sh_name)].decode(errors="ignore")
+        sname = shstr[sh_name:shstr.find(0, sh_name)].decode(errors="ignore")
         if sname == ".text" and (sh_flags & 4):
             for pos in range(sh_offset, sh_offset + sh_size, 4):
                 insn = struct.unpack_from("<I", data, pos)[0]
