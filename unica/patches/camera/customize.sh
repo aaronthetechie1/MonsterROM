@@ -337,6 +337,55 @@ if [[ "$SOURCE_CAMERA_CONFIG_VENDOR_LIB_INFO" == *"super_resolution_raw.arcsoft"
     DELETE_FROM_WORK_DIR "system" "system/lib64/libsuperresolutionraw_wrapper_v2.camera.samsung.so"
     DELETE_FROM_WORK_DIR "system" "system/lib64/libsuperresolution_raw.arcsoft.so"
 fi
+if [[ "$SOURCE_CAMERA_CONFIG_VENDOR_LIB_INFO" == *"image_codec.samsung.v2"* ]] && \
+        [[ "$TARGET_CAMERA_CONFIG_VENDOR_LIB_INFO" == *"image_codec.samsung.v1"* ]]; then
+    TARGET_CAMERA_CONFIG_VENDOR_LIB_INFO="${TARGET_CAMERA_CONFIG_VENDOR_LIB_INFO/image_codec.samsung.v1/image_codec.samsung.v2}"
+    SET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_CAMERA_CONFIG_VENDOR_LIB_INFO" "$TARGET_CAMERA_CONFIG_VENDOR_LIB_INFO"
+fi
+
+# Replace ARMv8.4 FEAT_LRCPC2 stlur* instructions with ARMv8.0 stur* for ARMv8.2 targets
+python3 - "$WORK_DIR/system/system/lib64" << 'EOF'
+import os, struct, sys
+
+lib_dir = sys.argv[1]
+targets = [
+    "libSmartScan.camera.samsung.so",
+    "libDocRectifyWrapper.camera.samsung.so",
+    "libaifrc.aidl.quram.so",
+    "libimagecodec.quram.so",
+]
+for name in targets:
+    path = os.path.join(lib_dir, name)
+    if not os.path.isfile(path):
+        continue
+    data = bytearray(open(path, "rb").read())
+    e_shoff = struct.unpack_from("<Q", data, 40)[0]
+    e_shentsize, e_shnum, e_shstrndx = struct.unpack_from("<HHH", data, 58)
+    shstr_off = struct.unpack_from("<Q", data, e_shoff + e_shstrndx * e_shentsize + 24)[0]
+    shstr_sz = struct.unpack_from("<Q", data, e_shoff + e_shstrndx * e_shentsize + 32)[0]
+    shstr = data[shstr_off:shstr_off + shstr_sz]
+    patched = 0
+    for i in range(e_shnum):
+        off = e_shoff + i * e_shentsize
+        sh_name, sh_type, sh_flags, _, sh_offset, sh_size = struct.unpack_from("<IIQQQQ", data, off)
+        sname = shstr[sh_name:shstr.find(b" ", sh_name)].decode(errors="ignore")
+        if sname == ".text" and (sh_flags & 4):
+            for pos in range(sh_offset, sh_offset + sh_size, 4):
+                insn = struct.unpack_from("<I", data, pos)[0]
+                # Integer STLURB/STLURH/STLUR (size 00/01/10/11, bits 29:21 = 011001000, bits 11:10 = 00)
+                if (insn & 0x3fe00c00) == 0x19000000:
+                    new_insn = insn ^ 0x21000000  # -> STURB/STURH/STUR
+                    struct.pack_into("<I", data, pos, new_insn)
+                    patched += 1
+                # SIMD/FP STLUR (bits 29:21 = 011101000, bits 11:10 = 10)
+                elif (insn & 0x3fe00c00) == 0x1d000800:
+                    new_insn = insn ^ 0x21000800  # -> STUR (SIMD/FP)
+                    struct.pack_into("<I", data, pos, new_insn)
+                    patched += 1
+    if patched:
+        open(path, "wb").write(data)
+        print(f"Patched {patched} FEAT_LRCPC2 instructions in {name}")
+EOF
 SOURCE_CAMERA_DOCUMENTSCAN_SOLUTIONS="$(GET_FLOATING_FEATURE_CONFIG "$FW_DIR/$SOURCE_FIRMWARE_PATH/system/system/etc/floating_feature.xml" "SEC_FLOATING_FEATURE_CAMERA_DOCUMENTSCAN_SOLUTIONS")"
 TARGET_CAMERA_DOCUMENTSCAN_SOLUTIONS="$(GET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_CAMERA_DOCUMENTSCAN_SOLUTIONS")"
 if [[ "$SOURCE_CAMERA_DOCUMENTSCAN_SOLUTIONS" == *"AI_DEWARPING"* ]] && \
