@@ -13,17 +13,3 @@ EVAL "mv \"$KERNEL_DIR/boot.img\" \"$WORK_DIR/kernel/boot.img\"" || ABORT
 EVAL "rm -rf \"$KERNEL_DIR\""
 
 unset KERNEL_DIR
-
-if [ -f "$MODPATH/KernelSU_Next.apk" ]; then
-    LOG "- Installing KernelSU Next Manager"
-    mkdir -p "$WORK_DIR/system/system/app/KernelSU_Next/lib/arm64"
-    EVAL "cp -a \"$MODPATH/KernelSU_Next.apk\" \"$WORK_DIR/system/system/app/KernelSU_Next/KernelSU_Next.apk\""
-    EVAL "unzip -j -o \"$MODPATH/KernelSU_Next.apk\" \"lib/arm64-v8a/*.so\" -d \"$WORK_DIR/system/system/app/KernelSU_Next/lib/arm64\""
-    SET_METADATA "system" "system/app/KernelSU_Next" 0 0 755 "u:object_r:system_file:s0"
-    SET_METADATA "system" "system/app/KernelSU_Next/KernelSU_Next.apk" 0 0 644 "u:object_r:system_file:s0"
-    SET_METADATA "system" "system/app/KernelSU_Next/lib" 0 0 755 "u:object_r:system_file:s0"
-    SET_METADATA "system" "system/app/KernelSU_Next/lib/arm64" 0 0 755 "u:object_r:system_file:s0"
-    while IFS= read -r lib; do
-        SET_METADATA "system" "system/app/KernelSU_Next/lib/arm64/$(basename "$lib")" 0 0 644 "u:object_r:system_file:s0"
-    done < <(find "$WORK_DIR/system/system/app/KernelSU_Next/lib/arm64" -type f -name "*.so")
-fi
