@@ -25,6 +25,9 @@ if [[ -d "$UPSTREAM" ]]; then
     UPSTREAM="$(realpath -e "$UPSTREAM")"
 fi
 
+KSUN_REPO="${KSUN_SOURCE:-https://github.com/KernelSU-Next/KernelSU-Next.git}"
+KSUN_REVISION=8af3d4fec33be32fa5d3f8dae4f380fac45bf2cd
+
 BUILD="$(mktemp -d "$OUT/.chiclet.XXXXXXXX")"
 trap 'rm -rf -- "$BUILD"' EXIT
 git init -q "$BUILD/src"
@@ -32,18 +35,31 @@ cd "$BUILD/src"
 git fetch --quiet --no-tags --depth=1 "$UPSTREAM" "$REVISION"
 git checkout -q --detach "$REVISION"
 git apply "$PATCH_DIR"/[0-9]*.patch
+git apply "$PATCH_DIR/ksun-kernel-hooks.patch"
 
-# Chiclet's vanilla configuration omits the optional KernelSU source.
-sed -i '/^source "drivers\/kernelsu\/Kconfig"$/d' drivers/Kconfig
+# Integrate KernelSU Next (v3.4.0-legacy) with 5.4 backport fixes.
+rm -rf KernelSU-Next drivers/kernelsu
+git init -q KernelSU-Next
+git -C KernelSU-Next fetch --quiet --no-tags --depth=1 "$KSUN_REPO" "$KSUN_REVISION"
+git -C KernelSU-Next checkout -q --detach "$KSUN_REVISION"
+git -C KernelSU-Next apply "$PATCH_DIR/ksun-5.4-fixes.patch"
+ln -s ../KernelSU-Next/kernel drivers/kernelsu
+
 export LOCALVERSION= KBUILD_BUILD_USER=MonsterROM KBUILD_BUILD_HOST=o1s KBUILD_BUILD_VERSION=1
 KBUILD_BUILD_TIMESTAMP="$(date -u -d "@$(git show -s --format=%ct HEAD)" '+%Y-%m-%d %T UTC')"
 export KBUILD_BUILD_TIMESTAMP
 ARGS=(ARCH=arm64 LLVM=1 LLVM_IAS=1 O="$BUILD/obj")
 make "${ARGS[@]}" exynos2100_defconfig o1s.config
-scripts/config --file "$BUILD/obj/.config" --set-str LOCALVERSION "-ChicletKernel-UPSTREAM-v7-VANILLA" --enable FAKE_UNAME_5_15
+scripts/config --file "$BUILD/obj/.config" \
+    --set-str LOCALVERSION "-ChicletKernel-UPSTREAM-v7-KSUN" \
+    --enable FAKE_UNAME_5_15 \
+    --enable KSU \
+    --enable KSU_MANUAL_HOOK
 make "${ARGS[@]}" olddefconfig
 grep -Fxq 'CONFIG_MODEL_O1S=y' "$BUILD/obj/.config"
 grep -Fxq 'CONFIG_FAKE_UNAME_5_15=y' "$BUILD/obj/.config"
+grep -Fxq 'CONFIG_KSU=y' "$BUILD/obj/.config"
+grep -Fxq 'CONFIG_KSU_MANUAL_HOOK=y' "$BUILD/obj/.config"
 make "${ARGS[@]}" -j"${JOBS:-$(nproc)}" Image modules
 
 gzip -9nc "$BUILD/obj/arch/arm64/boot/Image" > "$BUILD/Image.gz"
