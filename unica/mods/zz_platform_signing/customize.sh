@@ -21,4 +21,215 @@ rm "$SIGNER_CLASSES/PlatformSigner.class"
 rmdir "$SIGNER_CLASSES"
 unset SIGNER_CLASSES STOCK_PLATFORM_APK
 
+
+if [ -f "$WORK_DIR/system/system/priv-app/SamsungAccount/SamsungAccount.apk" ]; then
+    LOG "- Patching SamsungAccount to report stock platform signature to Samsung servers"
+    DECODE_APK "system" "system/priv-app/SamsungAccount/SamsungAccount.apk"
+    python3 - "$STOCK_PLATFORM_APK" "$APKTOOL_DIR/system/priv-app/SamsungAccount/SamsungAccount.apk" << 'EOF'
+import subprocess, sys, zipfile
+from pathlib import Path
+
+stock_apk, sa_dir = sys.argv[1], Path(sys.argv[2])
+with zipfile.ZipFile(stock_apk) as z:
+    rsa_name = [n for n in z.namelist() if n.startswith("META-INF/") and n.endswith((".RSA", ".EC", ".DSA"))][0]
+    rsa_bytes = z.read(rsa_name)
+p1 = subprocess.run(["openssl", "pkcs7", "-inform", "DER", "-print_certs"], input=rsa_bytes, capture_output=True, check=True)
+p2 = subprocess.run(["openssl", "x509", "-outform", "DER"], input=p1.stdout, capture_output=True, check=True)
+cert_hex = p2.stdout.hex()
+
+helper = next(sa_dir.glob("smali*/com/samsung/android/samsungaccount/utils/signature/SignatureInfoHelper.smali"))
+src = helper.read_text()
+old_method = """.method public static d(Landroid/content/Context;Ljava/lang/String;)[Landroid/content/pm/Signature;
+    .locals 2
+
+    .line 1
+    const/4 v0, 0x0
+
+    .line 2
+    :try_start_0
+    invoke-virtual {p0}, Landroid/content/Context;->getPackageManager()Landroid/content/pm/PackageManager;
+
+    .line 3
+    .line 4
+    .line 5
+    move-result-object p0
+
+    .line 6
+    const/high16 v1, 0x8000000
+
+    .line 7
+    .line 8
+    invoke-virtual {p0, p1, v1}, Landroid/content/pm/PackageManager;->getPackageInfo(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;
+
+    .line 9
+    .line 10
+    .line 11
+    move-result-object p0
+
+    .line 12
+    iget-object p0, p0, Landroid/content/pm/PackageInfo;->signingInfo:Landroid/content/pm/SigningInfo;
+
+    .line 13
+    .line 14
+    if-eqz p0, :cond_0
+
+    .line 15
+    .line 16
+    invoke-virtual {p0}, Landroid/content/pm/SigningInfo;->getApkContentsSigners()[Landroid/content/pm/Signature;
+
+    .line 17
+    .line 18
+    .line 19
+    move-result-object p0
+    :try_end_0
+    .catch Landroid/content/pm/PackageManager$NameNotFoundException; {:try_start_0 .. :try_end_0} :catch_0
+
+    .line 20
+    return-object p0
+
+    .line 21
+    :catch_0
+    move-exception p0
+
+    .line 22
+    goto :goto_0
+
+    .line 23
+    :cond_0
+    return-object v0
+
+    .line 24
+    :goto_0
+    invoke-virtual {p0}, Ljava/lang/Throwable;->getMessage()Ljava/lang/String;
+
+    .line 25
+    .line 26
+    .line 27
+    move-result-object p0
+
+    .line 28
+    const-string p1, "getSignatures - cannot find package : "
+
+    .line 29
+    .line 30
+    const-string v1, "SignatureInfoHelper"
+
+    .line 31
+    .line 32
+    invoke-static {p1, p0, v1}, Lfc3;->n(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+
+    .line 33
+    .line 34
+    .line 35
+    return-object v0
+.end method"""
+
+new_method = """.method public static d(Landroid/content/Context;Ljava/lang/String;)[Landroid/content/pm/Signature;
+    .locals 5
+
+    const/4 v0, 0x0
+
+    :try_start_0
+    invoke-virtual {p0}, Landroid/content/Context;->getPackageManager()Landroid/content/pm/PackageManager;
+
+    move-result-object p0
+
+    const/high16 v1, 0x8000000
+
+    invoke-virtual {p0, p1, v1}, Landroid/content/pm/PackageManager;->getPackageInfo(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;
+
+    move-result-object p1
+
+    iget-object p1, p1, Landroid/content/pm/PackageInfo;->signingInfo:Landroid/content/pm/SigningInfo;
+
+    if-eqz p1, :cond_1
+
+    invoke-virtual {p1}, Landroid/content/pm/SigningInfo;->getApkContentsSigners()[Landroid/content/pm/Signature;
+
+    move-result-object p1
+
+    if-eqz p1, :cond_0
+
+    array-length v2, p1
+
+    if-lez v2, :cond_0
+
+    const-string v2, "android"
+
+    invoke-virtual {p0, v2, v1}, Landroid/content/pm/PackageManager;->getPackageInfo(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;
+
+    move-result-object p0
+
+    iget-object p0, p0, Landroid/content/pm/PackageInfo;->signingInfo:Landroid/content/pm/SigningInfo;
+
+    if-eqz p0, :cond_0
+
+    invoke-virtual {p0}, Landroid/content/pm/SigningInfo;->getApkContentsSigners()[Landroid/content/pm/Signature;
+
+    move-result-object p0
+
+    if-eqz p0, :cond_0
+
+    array-length v1, p0
+
+    if-lez v1, :cond_0
+
+    const/4 v1, 0x0
+
+    aget-object v2, p1, v1
+
+    aget-object p0, p0, v1
+
+    invoke-virtual {v2, p0}, Landroid/content/pm/Signature;->equals(Ljava/lang/Object;)Z
+
+    move-result p0
+
+    if-eqz p0, :cond_0
+
+    const/4 p0, 0x1
+
+    new-array p0, p0, [Landroid/content/pm/Signature;
+
+    new-instance v2, Landroid/content/pm/Signature;
+
+    const-string v3, "__CERT_HEX__"
+
+    invoke-direct {v2, v3}, Landroid/content/pm/Signature;-><init>(Ljava/lang/String;)V
+
+    aput-object v2, p0, v1
+    :try_end_0
+    .catch Landroid/content/pm/PackageManager$NameNotFoundException; {:try_start_0 .. :try_end_0} :catch_0
+
+    return-object p0
+
+    :cond_0
+    return-object p1
+
+    :catch_0
+    move-exception p0
+
+    goto :goto_0
+
+    :cond_1
+    return-object v0
+
+    :goto_0
+    invoke-virtual {p0}, Ljava/lang/Throwable;->getMessage()Ljava/lang/String;
+
+    move-result-object p0
+
+    const-string p1, "getSignatures - cannot find package : "
+
+    const-string v1, "SignatureInfoHelper"
+
+    invoke-static {p1, p0, v1}, Lfc3;->n(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+
+    return-object v0
+.end method""".replace("__CERT_HEX__", cert_hex)
+
+assert old_method in src, "SignatureInfoHelper.d not found"
+helper.write_text(src.replace(old_method, new_method, 1))
+EOF
+fi
+
 source "$MODPATH/fsverity/customize.sh"

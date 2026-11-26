@@ -342,6 +342,13 @@ if [[ "$SOURCE_CAMERA_CONFIG_VENDOR_LIB_INFO" == *"image_codec.samsung.v2"* ]] &
     TARGET_CAMERA_CONFIG_VENDOR_LIB_INFO="${TARGET_CAMERA_CONFIG_VENDOR_LIB_INFO/image_codec.samsung.v1/image_codec.samsung.v2}"
     SET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_CAMERA_CONFIG_VENDOR_LIB_INFO" "$TARGET_CAMERA_CONFIG_VENDOR_LIB_INFO"
 fi
+if [[ "$TARGET_CAMERA_CONFIG_VENDOR_LIB_INFO" == *"high_res.arcsoft.v1"* ]] && \
+        [ ! -f "$WORK_DIR/system/system/lib64/libhigh_res.arcsoft.so" ] && \
+        [ -f "$FW_DIR/$TARGET_FIRMWARE_PATH/system/system/lib64/libhigh_res.arcsoft.so" ]; then
+    LOG "- Adding target libhigh_res.arcsoft.so for high_res.arcsoft.v1"
+    EVAL "cp -a "$FW_DIR/$TARGET_FIRMWARE_PATH/system/system/lib64/libhigh_res.arcsoft.so" "$WORK_DIR/system/system/lib64/libhigh_res.arcsoft.so""
+    SET_METADATA "system" "system/lib64/libhigh_res.arcsoft.so" 0 0 644 "u:object_r:system_lib_file:s0"
+fi
 
 # Replace ARMv8.4 FEAT_LRCPC2 stlur* instructions with ARMv8.0 stur* for ARMv8.2 targets
 python3 - "$WORK_DIR/system/system/lib64" << 'EOF'
