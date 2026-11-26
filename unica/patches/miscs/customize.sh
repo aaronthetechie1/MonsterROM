@@ -36,3 +36,12 @@ if [[ "$TARGET_CODENAME" != "t2s" && "$TARGET_CODENAME" != "o1s" ]]; then
     APPLY_PATCH "system" "system/framework/services.jar" \
         "$MODPATH/vendor_warning/services.jar/0001-Disable-vendor-mismatch-warning.patch"
 fi
+
+# Fix Quick Share (ShareLive) crash on boot when GMS Nearby OEM denies unsuspend()
+if [ -f "$WORK_DIR/system/system/priv-app/ShareLive/ShareLive.apk" ]; then
+    DECODE_APK "system" "system/priv-app/ShareLive/ShareLive.apk"
+    ZZKZ_SMALI="$(find "$APKTOOL_DIR/system/priv-app/ShareLive/ShareLive.apk" -path "*/nearby_oem/zzkz.smali" | head -n 1)"
+    if [ -n "$ZZKZ_SMALI" ] && ! grep -q "Ljava/lang/SecurityException;" "$ZZKZ_SMALI"; then
+        sed -i '/\.catch Landroid\/os\/RemoteException; {:try_start_0 \.\. :try_end_0} :catch_0/a \    .catch Ljava/lang/SecurityException; {:try_start_0 .. :try_end_0} :catch_0' "$ZZKZ_SMALI"
+    fi
+fi
