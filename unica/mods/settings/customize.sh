@@ -33,3 +33,10 @@ done < <(find "$MODPATH/SecSettings.apk" -type f)
 unset PATCH_INST CONTENT
 
 LOG_STEP_OUT
+
+# Allow Settings (system_app) to toggle persist.debug.sysui.headline for Now Bar in status bar
+CONTEXTS="$WORK_DIR/system/system/etc/selinux/plat_property_contexts"
+if ! grep -q '^persist\.debug\.sysui\.headline ' "$CONTEXTS"; then
+    echo "persist.debug.sysui.headline u:object_r:exported3_system_prop:s0 exact bool" >> "$CONTEXTS"
+fi
+unset CONTEXTS

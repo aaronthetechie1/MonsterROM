@@ -12,4 +12,5 @@
     <string name="monsterrom_hma_save_error">Unable to save your app visibility choice.</string>
     <string name="monsterrom_hma_load_error">Unable to load your installed apps.</string>
     <string name="unica_boot_sound_title">Play boot sound effect</string>
+    <string name="unica_now_bar_headline_title">Enable Now Bar in status bar</string>
 </resources>
