@@ -59,9 +59,9 @@
 
     if-nez v1, :done
 
-    new-instance v1, Landroidx/appcompat/app/AlertDialog$Builder;
+    new-instance v1, Landroid/app/AlertDialog$Builder;
 
-    invoke-direct {v1, v0}, Landroidx/appcompat/app/AlertDialog$Builder;-><init>(Landroid/content/Context;)V
+    invoke-direct {v1, v0}, Landroid/app/AlertDialog$Builder;-><init>(Landroid/content/Context;)V
 
     const-string v0, "unica_dialog_reboot_title"
 
@@ -69,7 +69,7 @@
 
     move-result v0
 
-    invoke-virtual {v1, v0}, Landroidx/appcompat/app/AlertDialog$Builder;->setTitle(I)V
+    invoke-virtual {v1, v0}, Landroid/app/AlertDialog$Builder;->setTitle(I)V
 
     const-string v0, "unica_dialog_reboot_msg"
 
@@ -77,7 +77,7 @@
 
     move-result v0
 
-    invoke-virtual {v1, v0}, Landroidx/appcompat/app/AlertDialog$Builder;->setMessage(I)V
+    invoke-virtual {v1, v0}, Landroid/app/AlertDialog$Builder;->setMessage(I)V
 
     const-string v0, "unica_dialog_reboot_negative"
 
@@ -87,7 +87,7 @@
 
     const/4 v2, 0x0
 
-    invoke-virtual {v1, v0, v2}, Landroidx/appcompat/app/AlertDialog$Builder;->setNegativeButton(ILandroid/content/DialogInterface$OnClickListener;)V
+    invoke-virtual {v1, v0, v2}, Landroid/app/AlertDialog$Builder;->setNegativeButton(ILandroid/content/DialogInterface$OnClickListener;)V
 
     const-string v0, "unica_dialog_reboot_positive"
 
@@ -95,9 +95,9 @@
 
     move-result v0
 
-    invoke-virtual {v1, v0, p0}, Landroidx/appcompat/app/AlertDialog$Builder;->setPositiveButton(ILandroid/content/DialogInterface$OnClickListener;)V
+    invoke-virtual {v1, v0, p0}, Landroid/app/AlertDialog$Builder;->setPositiveButton(ILandroid/content/DialogInterface$OnClickListener;)V
 
-    invoke-virtual {v1}, Landroidx/appcompat/app/AlertDialog$Builder;->show()Landroidx/appcompat/app/AlertDialog;
+    invoke-virtual {v1}, Landroid/app/AlertDialog$Builder;->show()Landroid/app/AlertDialog;
 
     :done
     return-void
