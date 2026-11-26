@@ -408,6 +408,52 @@ if [ -f "$WORK_DIR/system/system/lib64/libImageSegmenter_v1.camera.samsung.so" ]
     DELETE_FROM_WORK_DIR "system" "system/lib64/libImageSegmenter_v1.camera.samsung.so"
 fi
 
+
+# Clear unsupported secondPicCbImgSizeConfig (e.g. 4032x3024 on S21 64MP CameraDevice-50)
+if [ -f "$WORK_DIR/system/system/priv-app/SamsungCamera/SamsungCamera.apk" ]; then
+    DECODE_APK "system" "system/priv-app/SamsungCamera/SamsungCamera.apk"
+    python3 - "$APKTOOL_DIR/system/priv-app/SamsungCamera/SamsungCamera.apk" << 'EOF'
+import re, sys
+from pathlib import Path
+
+cam_dir = Path(sys.argv[1])
+maker_base = next(cam_dir.glob("smali*/com/samsung/android/camera/core2/maker/MakerBase.smali"))
+src = maker_base.read_text()
+pattern = re.compile(
+    r"(    iget-object p0, p2, Lcom/samsung/android/camera/core2/container/DeviceConfiguration;->n:Lcom/samsung/android/camera/core2/container/PicCbImgSizeConfig;
+(?:\s*\.line \d+
+)*
+    invoke-static \{p0\}, Ljava/util/Optional;->ofNullable\(Ljava/lang/Object;\)Ljava/util/Optional;)"
+)
+if "cond_clear_second_done" not in src:
+    assert pattern.search(src), "MakerBase secondPicCbImgSizeConfig block not found"
+    replacement = """    iget-object p0, p2, Lcom/samsung/android/camera/core2/container/DeviceConfiguration;->n:Lcom/samsung/android/camera/core2/container/PicCbImgSizeConfig;
+
+    if-eqz p0, :cond_clear_second_done
+
+    invoke-virtual {p1, v0}, Lcom/samsung/android/camera/core2/CamCapability;->E(Ljava/lang/Integer;)Ljava/util/List;
+
+    move-result-object v1
+
+    iget-object v2, p0, Lcom/samsung/android/camera/core2/container/PicCbImgSizeConfig;->a:Landroid/util/Size;
+
+    invoke-interface {v1, v2}, Ljava/util/List;->contains(Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-nez v1, :cond_clear_second_done
+
+    const/4 p0, 0x0
+
+    iput-object p0, p2, Lcom/samsung/android/camera/core2/container/DeviceConfiguration;->n:Lcom/samsung/android/camera/core2/container/PicCbImgSizeConfig;
+
+    :cond_clear_second_done
+    invoke-static {p0}, Ljava/util/Optional;->ofNullable(Ljava/lang/Object;)Ljava/util/Optional;"""
+    maker_base.write_text(pattern.sub(replacement, src, count=1))
+    print("Patched MakerBase.smali in camera/customize.sh")
+EOF
+fi
+
 # Fix device model number in photo/video metadata
 while IFS= read -r f; do
     HEX_PATCH "$f" "726f2e70726f647563742e6d6f64656c00" "726f2e626f6f742e656d2e6d6f64656c00"
