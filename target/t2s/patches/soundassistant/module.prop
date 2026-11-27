@@ -1,0 +1,4 @@
+id=soundassistant
+name=Samsung Sound Assistant
+author=Samsung, MonsterROM_NEXT
+description=Preloads the Samsung-signed Sound Assistant and grants its audio routing and notification permissions.
